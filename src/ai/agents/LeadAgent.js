@@ -40,8 +40,7 @@ export default class LeadAgent extends BaseAgent {
     state.persistence.conversation.dirty = true;
     state.persistence.conversation.updatedAt = new Date();
 
-    state.response = responseBuilder.contact(result.response);
-
+    state.response = responseBuilder.lead(result.response);
     return state;
   }
 }

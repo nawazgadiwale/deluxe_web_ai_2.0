@@ -16,8 +16,31 @@ export default class OrderAgent extends BaseAgent {
      * =====================================================
      */
 
-    state.extractedOrder = await orderExtractor.extract(state);
+    const step = state.currentStep;
 
+    const skipExtractionSteps = [
+      "NEXT_ITEM",
+      "ORDER_REVIEW",
+    ];
+
+    if (skipExtractionSteps.includes(step)) {
+      state.extractedOrder = null;
+    } else {
+      console.log("\n================ ORDER AGENT ================");
+      console.log("User Message:", state.userMessage);
+
+      console.log("\nIncoming Action:");
+      console.dir(state.action, { depth: null });
+
+      console.log("\nSelected Product:");
+      console.log(state.selectedProduct);
+
+      console.log("\nRecommendation:");
+      console.dir(state.recommendation, { depth: 2 });
+
+      console.log("=============================================\n");
+      state.extractedOrder = await orderExtractor.extract(state);
+    }
     /*
      * =====================================================
      * Process Order
@@ -25,6 +48,8 @@ export default class OrderAgent extends BaseAgent {
      */
 
     const result = await orderRequestService.process(state);
+    console.log("Returned Active Item");
+    console.dir(result.activeOrderItem, { depth: null });
 
     if (!result) {
       throw new Error("OrderRequestService returned undefined.");
@@ -39,7 +64,8 @@ export default class OrderAgent extends BaseAgent {
     state.orderRequest = result.orderRequest;
     state.orderStatus = result.status;
     state.activeOrderItem = result.activeOrderItem ?? null;
-
+    console.log("Saved Active Item");
+    console.dir(state.activeOrderItem, { depth: null });
     /*
      * =====================================================
      * Workflow

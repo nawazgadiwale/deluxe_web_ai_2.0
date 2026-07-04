@@ -5,25 +5,35 @@ export const ACTIONS = Object.freeze({
    * =====================================================
    */
 
-  SHOW_MORE: "SHOW_MORE",
+  SHOW_PRODUCT_DETAILS: "SHOW_PRODUCT_DETAILS",
+
   ORDER_PRODUCT: "ORDER_PRODUCT",
-  TALK_TO_EXPERT: "TALK_TO_EXPERT",
-  SHOW_SIMILAR: "SHOW_SIMILAR",
-  GET_QUOTATION: "GET_QUOTATION",
+
+  CONTACT_SALES: "CONTACT_SALES",
+
+  SHOW_SIMILAR_PRODUCTS: "SHOW_SIMILAR_PRODUCTS",
+
+  GET_QUOTE: "GET_QUOTE",
 
   /*
    * =====================================================
-   * Order
+   * Order Workflow
    * =====================================================
    */
 
-  ADD_ANOTHER: "ADD_ANOTHER",
+  ADD_ANOTHER_PRODUCT: "ADD_ANOTHER_PRODUCT",
+
   REVIEW_ORDER: "REVIEW_ORDER",
-  CONFIRM_ORDER: "CONFIRM_ORDER",
+
   MODIFY_ORDER: "MODIFY_ORDER",
-  REMOVE_ITEM: "REMOVE_ITEM",
-  CHANGE_QUANTITY: "CHANGE_QUANTITY",
+
+  CONFIRM_ORDER: "CONFIRM_ORDER",
+
   CANCEL_ORDER: "CANCEL_ORDER",
+
+  REMOVE_ITEM: "REMOVE_ITEM",
+
+  CHANGE_QUANTITY: "CHANGE_QUANTITY",
 
   /*
    * =====================================================
@@ -31,7 +41,7 @@ export const ACTIONS = Object.freeze({
    * =====================================================
    */
 
-  SUBMIT_DETAILS: "SUBMIT_DETAILS",
+  SUBMIT_CUSTOMER_DETAILS: "SUBMIT_CUSTOMER_DETAILS",
 
   /*
    * =====================================================
@@ -40,15 +50,16 @@ export const ACTIONS = Object.freeze({
    */
 
   REQUEST_CALLBACK: "REQUEST_CALLBACK",
+
   SHARE_CONTACT: "SHARE_CONTACT",
+
   SCHEDULE_MEETING: "SCHEDULE_MEETING",
 
   /*
    * =====================================================
-   * FAQ / Support
+   * Navigation
    * =====================================================
    */
 
-  CONTACT_SUPPORT: "CONTACT_SUPPORT",
   BACK_TO_MENU: "BACK_TO_MENU",
 });

@@ -1,24 +1,21 @@
 import ValidationError from "../../core/errors/ValidationError.js";
 
 const validateRequest = (schema) => {
-    return (req, res, next) => {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body);
 
-        const result = schema.safeParse(req.body);
+    if (!result.success) {
+      const firstIssue = result.error.issues?.[0] ?? result.error.errors?.[0];
 
-        if (!result.success) {
+      return next(
+        new ValidationError(firstIssue?.message ?? "Invalid request."),
+      );
+    }
 
-            return next(
-                new ValidationError(
-                    result.error.errors[0].message
-                )
-            );
+    req.body = result.data;
 
-        }
-
-        req.body = result.data;
-
-        next();
-    };
+    next();
+  };
 };
 
 export default validateRequest;

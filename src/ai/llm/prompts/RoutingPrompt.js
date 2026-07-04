@@ -10,34 +10,26 @@ Your ONLY responsibility is to classify the customer's latest message into EXACT
 
 Return ONLY valid JSON.
 
---------------------------------------------------
 Conversation State
---------------------------------------------------
 
 ${conversationState}
 
---------------------------------------------------
 Recent Conversation
---------------------------------------------------
 
 ${history
   .slice(-8)
   .map((m) => `${m.role}: ${m.content}`)
   .join("\n")}
 
---------------------------------------------------
 Latest Customer Message
---------------------------------------------------
 
 ${message}
 
---------------------------------------------------
 Available Capabilities
---------------------------------------------------
 
 1. greeting
 
-Use ONLY when the customer is simply greeting,
+Choose greeting ONLY when the customer is greeting,
 thanking,
 or ending the conversation.
 
@@ -53,11 +45,10 @@ Examples
 - bye
 - goodbye
 
---------------------------------------------------
 
 2. recommendation
 
-Choose recommendation when the customer is still exploring.
+Choose recommendation when the customer is exploring products and wants suggestions.
 
 Examples
 
@@ -69,21 +60,48 @@ Examples
 - I'm opening a hotel
 - I'm opening a clinic
 - I'm opening a school
-- What do you recommend?
-- Which banner should I use?
-- Which business card finish is better?
 - Suggest promotional products
 - Suggest branding ideas
 - I need marketing materials
-- I don't know what to buy
 - Help me choose
+- Recommend products for my business
+- What should I buy?
+- What products suit my business?
 
-If the customer is asking for advice,
-ALWAYS choose recommendation.
+Recommendation means the customer DOES NOT know exactly which product they want.
 
---------------------------------------------------
 
-3. order
+3. product_details
+
+Choose product_details when the customer already knows the product and wants information about it.
+
+Examples
+
+- Business Cards
+- Tell me about Business Cards
+- Show me Business Cards
+- Pocket Square
+- Hoodies
+- Explain Letterheads
+- Information about Flyers
+- Details about Pens
+- Business Card specifications
+- Business Card uses
+- What is a Brochure?
+- Show Pocket Square
+
+If the customer mentions ONE specific product and wants information about it,
+
+ALWAYS return product_details.
+
+DO NOT return recommendation.
+
+The response should focus ONLY on that product.
+
+Related Products and Frequently Bought Together are allowed as complementary suggestions.
+
+
+4. order
 
 Choose order ONLY if the customer has already decided to purchase.
 
@@ -94,17 +112,19 @@ Examples
 - Confirm my order
 - Checkout
 - Proceed with the order
+- Add this product
+- I'll take this
+- Place order
+- Remove item
 - Change quantity
-- Remove an item
 - Add another banner
 
-Do NOT choose order if the customer is still asking for suggestions.
+The customer has already selected the product.
 
---------------------------------------------------
 
-4. lead
+5. lead
 
-Choose lead whenever the customer wants human assistance instead of product recommendations.
+Choose lead whenever the customer wants human assistance.
 
 Examples
 
@@ -113,50 +133,41 @@ Examples
 - Can someone call me?
 - Request a callback
 - Schedule a meeting
-- Send your company profile
 - I need a quotation
 - Get instant quote
-- I'd like to discuss my project
-- Talk to your team
 - Contact your sales department
-- Connect me with a consultant
+- Talk to your consultant
 
-Do NOT choose recommendation for these requests.
 
---------------------------------------------------
-
-5. support
+6. support
 
 Choose support ONLY when the customer needs help with an existing order or technical issue.
 
 Examples
 
 - Payment failed
-- I cannot upload artwork
+- Upload problem
 - Delivery issue
 - Track my order
 - Refund
 - My order is delayed
-- I have a problem
+- Technical issue
 
-Never classify recommendation questions as support.
 
---------------------------------------------------
-
-6. faq
+7. faq
 
 Choose faq for general company information.
 
 Examples
 
 - Where are you located?
-- What are your working hours?
-- What services do you provide?
-- Tell me about Deluxe Printing.
-- Do you print internationally?
-- How can I contact you?
-
---------------------------------------------------
+- Working hours
+- Contact number
+- Email
+- About Deluxe Printing
+- Company profile
+- Services
+- Delivery locations
 
 Priority Rules
 
@@ -164,25 +175,31 @@ Priority Rules
 
 2. lead
 
-3. recommendation
+3. product_details
 
-4. support
+4. recommendation
 
-5. faq
+5. support
 
-6. greeting
+6. faq
+
+7. greeting
 
 Important Rules
 
-- Return EXACTLY ONE capability.
-- If the customer is asking for ideas or suggestions, ALWAYS return recommendation.
-- If the customer wants to speak to a human, ALWAYS return lead.
-- If the customer is ready to purchase, return order.
-- Never classify "connect me to an expert" as recommendation.
-- Never classify company information as recommendation.
-- Never invent capabilities.
+• If the customer wants suggestions or ideas, return recommendation.
 
---------------------------------------------------
+• If the customer mentions a specific product and wants information about it, return product_details.
+
+• If the customer is ready to purchase, return order.
+
+• If the customer wants a human, return lead.
+
+• If the customer asks company information, return faq.
+
+• Return EXACTLY ONE capability.
+
+• Never invent new capabilities.
 
 Return ONLY valid JSON.
 

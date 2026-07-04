@@ -3,22 +3,36 @@ import ChatApplication from "../../application/ChatApplication.js";
 const chatApplication = new ChatApplication();
 
 export default class ChatController {
-  /**
+  /*
+   * =====================================================
    * POST /api/chat
+   * =====================================================
    */
+
   chat = async (req, res, next) => {
     try {
-      const result = await chatApplication.process(req.body);
+      console.log("\n======================================");
+      console.log("CHAT REQUEST");
+      console.log("======================================");
+      console.log("Session :", req.body.sessionId);
+      console.log("Message :", req.body.message);
+      console.log("Action  :", req.body.action);
+      console.log("======================================");
 
-      return res.status(200).json(result);
+      const response = await chatApplication.process(req.body);
+
+      return res.status(200).json(response);
     } catch (error) {
       next(error);
     }
   };
 
-  /**
-   * GET /api/chat/:sessionId
+  /*
+   * =====================================================
+   * GET Conversation
+   * =====================================================
    */
+
   getConversation = async (req, res, next) => {
     try {
       const { sessionId } = req.params;
@@ -41,9 +55,12 @@ export default class ChatController {
     }
   };
 
-  /**
-   * PATCH /api/chat/:sessionId/complete
+  /*
+   * =====================================================
+   * Complete Conversation
+   * =====================================================
    */
+
   completeConversation = async (req, res, next) => {
     try {
       const { sessionId } = req.params;

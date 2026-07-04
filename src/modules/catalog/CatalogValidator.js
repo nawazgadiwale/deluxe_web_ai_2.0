@@ -4,38 +4,61 @@ import CatalogService from "./CatalogService.js";
 const catalogService = new CatalogService();
 
 export default class CatalogValidator {
-  async validateProductSelection(data) {
-    const product =
-    await catalogService.findProductByName(data.product);
+  /*
+   * =====================================================
+   * Product Validation
+   * =====================================================
+   */
+
+  async validateProductSelection(selection) {
+    const product = await catalogService.findProductByName(selection?.product);
 
     if (!product) {
-      throw new ValidationError("Selected product does not exist");
+      throw new ValidationError("Selected product does not exist.");
     }
 
     return product;
   }
 
-  async validateSpecifications(product, selectedOptions) {
-    const required = product.requiredFields || [];
+  /*
+   * =====================================================
+   * Specifications Validation
+   * =====================================================
+   */
 
-    const missing = required.filter((field) => !selectedOptions[field]);
+  validateSpecifications(product, specifications = {}) {
+    const requiredFields = product.metadata?.requiredFields ?? [];
 
-    if (missing.length) {
-      throw new ValidationError(`Missing fields: ${missing.join(", ")}`);
+    const missingFields = requiredFields.filter((field) => {
+      const value = specifications[field];
+
+      return value === undefined || value === null || value === "";
+    });
+
+    if (missingFields.length) {
+      throw new ValidationError(
+        `Missing required fields: ${missingFields.join(", ")}`,
+      );
     }
 
     return true;
   }
 
+  /*
+   * =====================================================
+   * Order Validation
+   * =====================================================
+   */
+
   async validateOrder(order) {
     const product = await this.validateProductSelection(order);
 
-    await this.validateSpecifications(product, order.options);
+    this.validateSpecifications(product, order.specifications ?? {});
 
     return {
       ...order,
 
-      productDetails: product,
+      product,
     };
   }
 }

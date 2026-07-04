@@ -99,57 +99,40 @@ export default class LeadService {
      * Ask Next Question
      * =====================================================
      */
-
     const nextQuestion = manager.getNextQuestion(lead);
 
-    if (nextQuestion) {
+    if (nextQuestion.step !== "LEAD_COMPLETED") {
       manager.updateStatus(lead, "COLLECTING_CUSTOMER");
 
       return {
         status: "COLLECTING_CUSTOMER",
-
         leadRequest: lead,
-
         awaitingDecision: false,
-
         currentStep: nextQuestion.step,
-
         response: nextQuestion,
       };
     }
 
     /*
-     * =====================================================
      * Lead Completed
-     * =====================================================
      */
 
     manager.assignSalesPerson(lead, {
-      role: "SALES",
-
-      name: "Sales Team",
+      role: "Admin",
+      name: "Admin User",
     });
 
     manager.updateStatus(lead, "SUBMITTED");
 
     return {
       status: "COMPLETED",
-
       leadRequest: lead,
-
       awaitingDecision: false,
-
       currentStep: null,
-
       response: {
         step: "LEAD_COMPLETED",
-
         message:
           "Thank you. Your request has been submitted successfully. One of our product specialists will contact you shortly.",
-
-        assignedTo: lead.assignedTo,
-
-        customer: lead.customer,
       },
     };
   }

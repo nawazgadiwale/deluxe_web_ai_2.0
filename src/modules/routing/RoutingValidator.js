@@ -1,13 +1,13 @@
 const VALID_CAPABILITIES = [
   "greeting",
   "recommendation",
+  "product_details",
   "order",
   "lead",
   "support",
   "faq",
 ];
-
-const VALID_SOURCES = ["RULE", "LLM", "FALLBACK"];
+const VALID_SOURCES = ["ACTION", "RULE", "LLM", "FALLBACK"];
 
 export default class RoutingValidator {
   validate(result = {}) {

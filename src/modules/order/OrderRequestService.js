@@ -6,135 +6,46 @@ const validator = new OrderRequestValidator();
 
 export default class OrderRequestService {
   async process(state) {
-    let orderRequest = state.orderRequest ?? manager.createOrderRequest();
+    let { orderRequest, activeItem, message, action } =
+      this.restoreOrderState(state);
 
     /*
      * ===================================================
-     * STEP 1 : Waiting for NEXT ITEM decision
+     * STEP 1 : Waiting For Next Item Decision
      * ===================================================
      */
 
-    if (state.awaitingDecision && state.currentStep === "NEXT_ITEM") {
-      const answer = (state.userMessage ?? "").trim().toLowerCase();
-
-      const continueWords = [
-        "yes",
-        "yeah",
-        "y",
-        "sure",
-        "ok",
-        "okay",
-        "also",
-        "another",
-        "add",
-      ];
-
-      const wantsAnother = continueWords.some(
-        (word) => answer === word || answer.startsWith(`${word} `),
-      );
-
-      if (wantsAnother) {
-        manager.updateStatus(orderRequest, "DRAFT");
-
-        // Reset so the extractor creates a new product
-        state.activeOrderItem = null;
-
-        return {
-          status: "COLLECTING_ITEMS",
-
-          orderRequest,
-
-          activeOrderItem: null,
-
-          awaitingDecision: false,
-
-          currentStep: null,
-
-          response: {
-            step: "COLLECT_PRODUCT_DETAILS",
-
-            message: "Sure! Tell me the next product you'd like to add.",
-          },
-        };
-      }
-
-      /*
-       * User finished adding products
-       */
-
-      manager.updateStatus(orderRequest, "DRAFT");
-
-      return {
-        status: "ORDER_REVIEW",
-
+    if (state.currentStep === "NEXT_ITEM") {
+      return this.handleNextItemStep({
+        state,
         orderRequest,
-
-        activeOrderItem: null,
-
-        awaitingDecision: true,
-
-        currentStep: "ORDER_CONFIRMATION",
-
-        response: {
-          step: "ORDER_REVIEW",
-
-          message: "Please review your order.",
-
-          items: orderRequest.items,
-
-          question: "Would you like to confirm this order or make any changes?",
-        },
-      };
+        activeItem,
+        message,
+        action,
+      });
     }
 
+    console.log("================================");
+    console.log("ORDER REVIEW");
+    console.log("Message :", message);
+    console.log("Action  :", state.action);
+    console.log("Resolved:", action);
+    console.log("================================");
+
     /*
      * ===================================================
-     * STEP 2 : Waiting for ORDER confirmation
+     * STEP 2 : Review Order
      * ===================================================
      */
 
-    if (state.awaitingDecision && state.currentStep === "ORDER_CONFIRMATION") {
-      const answer = (state.userMessage ?? "").trim().toLowerCase();
-
-      if (["yes", "confirm", "confirmed", "looks good"].includes(answer)) {
-        manager.updateStatus(orderRequest, "DRAFT");
-        return {
-          status: "COLLECTING_CUSTOMER",
-
-          orderRequest,
-
-          activeOrderItem: null,
-
-          awaitingDecision: false,
-
-          currentStep: "CUSTOMER_DETAILS",
-
-          response: {
-            step: "CUSTOMER_DETAILS",
-
-            message:
-              "Perfect. Before I submit your order, please provide your Name, Mobile Number and Email Address.",
-          },
-        };
-      }
-
-      manager.updateStatus(orderRequest, "COLLECTING_ITEMS");
-
-      return {
-        status: "COLLECTING_ITEMS",
-
+    if (state.currentStep === "ORDER_REVIEW") {
+      return this.handleReviewStep({
+        state,
         orderRequest,
-
-        activeOrderItem: null,
-
-        awaitingDecision: false,
-
-        currentStep: null,
-
-        response: {
-          message: "Sure. Tell me what you would like to modify or add.",
-        },
-      };
+        activeItem,
+        message,
+        action,
+      });
     }
 
     /*
@@ -144,76 +55,11 @@ export default class OrderRequestService {
      */
 
     if (state.currentStep === "CUSTOMER_DETAILS") {
-      const customer = {
-        ...orderRequest.customer,
-        ...(state.extractedOrder?.customer ?? {}),
-      };
-
-      manager.updateCustomer(orderRequest, customer);
-
-      const missing = [];
-
-      if (!customer.name) missing.push("name");
-
-      if (!customer.mobile) missing.push("mobile");
-
-      if (!customer.email) missing.push("email");
-
-      if (missing.length) {
-        return {
-          status: "COLLECTING_CUSTOMER",
-
-          orderRequest,
-
-          activeOrderItem: null,
-
-          awaitingDecision: false,
-
-          currentStep: "CUSTOMER_DETAILS",
-
-          response: {
-            step: "CUSTOMER_DETAILS",
-
-            message: "I still need a few details before submitting your order.",
-
-            missingFields: missing,
-          },
-        };
-      }
-      //
-      // Assign salesperson
-      //
-
-      manager.assignSalesPersonByCategory(orderRequest);
-
-      // Customer has confirmed.
-      // Order is officially submitted.
-
-      manager.updateStatus(orderRequest, "SUBMITTED");
-
-      return {
-        status: "COMPLETED",
-
+      return this.handleCustomerStep({
+        state,
         orderRequest,
-
-        activeOrderItem: null,
-
-        awaitingDecision: false,
-
-        currentStep: null,
-
-        response: {
-          step: "ORDER_COMPLETED",
-
-          message: `Thank you for choosing Deluxe Printing. Your order details have been submitted successfully. One of our ${orderRequest.assignedTo?.name ?? "Sales"} experts will contact you shortly to discuss your requirements and assist you with the next steps.`,
-
-          customer: orderRequest.customer,
-
-          assignedTo: orderRequest.assignedTo,
-
-          items: orderRequest.items,
-        },
-      };
+        activeItem,
+      });
     }
 
     /*
@@ -222,43 +68,321 @@ export default class OrderRequestService {
      * ===================================================
      */
 
-    let activeItem = manager.mergeActiveItem(
-      state.activeOrderItem,
-      state.extractedOrder,
-    );
+    return this.handleProductCollection({
+      state,
+      orderRequest,
+      activeItem,
+    });
+  }
+  /*
+   * ===================================================
+   * Restore Working State
+   * ===================================================
+   */
 
-    const validation = await validator.validate(activeItem);
+  restoreOrderState(state) {
+    const orderRequest = state.orderRequest ?? manager.createOrderRequest();
 
-    if (!validation.valid) {
-      return {
+    const activeItem =
+      state.activeOrderItem ?? orderRequest.activeOrderItem ?? null;
+
+    return {
+      orderRequest,
+
+      activeItem,
+
+      message: (state.userMessage ?? "").trim(),
+
+      action: this.getAction(state),
+    };
+  }
+  /*
+   * ===================================================
+   * STEP : ORDER REVIEW
+   * ===================================================
+   */
+
+  handleReviewStep({ orderRequest, action, message }) {
+    /*
+     * ---------------------------------------
+     * Confirm Order
+     * ---------------------------------------
+     */
+
+    if (action === "CONFIRM_ORDER" || this.wantsConfirm(message)) {
+      manager.updateStatus(orderRequest, "DRAFT");
+
+      return this.buildState({
+        status: "COLLECTING_CUSTOMER",
+
+        orderRequest,
+
+        activeOrderItem: null,
+
+        awaitingDecision: false,
+
+        currentStep: "CUSTOMER_DETAILS",
+
+        response: {
+          step: "CUSTOMER_DETAILS",
+
+          message: "Perfect! Before I submit your order, I need a few details.",
+
+          missingFields: ["name", "mobile", "email"],
+        },
+      });
+    }
+
+    /*
+     * ---------------------------------------
+     * Modify Order
+     * ---------------------------------------
+     */
+
+    const wantsModify =
+      action === "MODIFY_ORDER" ||
+      [
+        "modify",
+        "change",
+        "remove",
+        "delete",
+        "replace",
+        "update",
+        "edit",
+        "quantity",
+        "qty",
+        "increase",
+        "decrease",
+        "cancel item",
+      ].some((word) => message.toLowerCase().includes(word));
+
+    if (wantsModify) {
+      manager.updateStatus(orderRequest, "DRAFT");
+
+      return this.buildState({
         status: "COLLECTING_ITEMS",
 
         orderRequest,
 
-        activeOrderItem: activeItem,
+        activeOrderItem: null,
 
         awaitingDecision: false,
 
-        currentStep: null,
+        currentStep: "COLLECT_PRODUCT",
 
         response: {
-          step: "COLLECT_PRODUCT_DETAILS",
+          step: "COLLECT_PRODUCT",
 
-          message:
-            "I need a little more information before adding this product.",
-
-          missingFields: validation.missingFields,
-
-          errors: validation.errors,
+          message: "Sure! Tell me what you'd like to add, remove or modify.",
         },
-      };
+      });
     }
 
-    activeItem = manager.completeItem(activeItem);
+    /*
+     * ---------------------------------------
+     * Invalid Reply
+     * ---------------------------------------
+     */
 
-    orderRequest = manager.addOrUpdateItem(orderRequest, activeItem);
+    return this.buildState({
+      status: "ORDER_REVIEW",
+
+      orderRequest,
+
+      activeOrderItem: null,
+
+      awaitingDecision: true,
+
+      currentStep: "ORDER_REVIEW",
+
+      response: {
+        step: "ORDER_REVIEW",
+
+        message: "Please review your order before continuing.",
+
+        items: orderRequest.items,
+
+        actions: this.getReviewActions(),
+      },
+    });
+  }
+  /*
+   * ===================================================
+   * STEP : CUSTOMER DETAILS
+   * ===================================================
+   */
+
+  handleCustomerStep({ state, orderRequest }) {
+    const customer = {
+      ...orderRequest.customer,
+      ...(state.extractedOrder?.customer ?? {}),
+    };
+
+    manager.updateCustomer(orderRequest, customer);
+
+    if (manager.needsCustomerDetails(orderRequest)) {
+      const missingFields = manager.getMissingCustomerFields(orderRequest);
+
+      const nextField = manager.getNextCustomerField(orderRequest);
+
+      return this.buildState({
+        status: "COLLECTING_CUSTOMER",
+
+        orderRequest,
+
+        activeOrderItem: null,
+
+        awaitingDecision: false,
+
+        currentStep: "CUSTOMER_DETAILS",
+
+        response: {
+          step: "CUSTOMER_DETAILS",
+
+          message: "I still need a few details before submitting your order.",
+
+          missingFields,
+
+          nextField,
+        },
+      });
+    }
+
+    /*
+     * ---------------------------------------
+     * Assign Salesperson
+     * ---------------------------------------
+     */
+
+    manager.assignSalesPersonByCategory(orderRequest);
+
+    manager.updateStatus(orderRequest, "SUBMITTED");
+
+    return this.buildState({
+      status: "COMPLETED",
+
+      orderRequest,
+
+      activeOrderItem: null,
+
+      awaitingDecision: false,
+
+      currentStep: null,
+
+      response: {
+        step: "ORDER_COMPLETED",
+
+        message: `Thank you for choosing Deluxe Printing. Your order has been submitted successfully. One of our ${
+          orderRequest.assignedTo?.name ?? "Sales"
+        } experts will contact you shortly.`,
+
+        customer: orderRequest.customer,
+
+        assignedTo: orderRequest.assignedTo,
+
+        items: orderRequest.items,
+      },
+    });
+  }
+
+  /*
+   * ===================================================
+   * STEP : PRODUCT COLLECTION
+   * ===================================================
+   */
+
+  async handleProductCollection({ state, orderRequest, activeItem }) {
+    if (!state.extractedOrder) {
+      return this.buildState({
+        status: "COLLECTING_ITEMS",
+        orderRequest,
+        activeOrderItem: activeItem,
+        awaitingDecision: false,
+        currentStep: state.currentStep,
+        response: {
+          step: state.currentStep,
+          message: this.buildQuestion(state.currentStep?.toLowerCase()),
+        },
+      });
+    }
+    console.log("================================");
+    console.log("Current Step:", state.currentStep);
+
+    console.log("State Active Item");
+    console.dir(state.activeOrderItem, {
+      depth: null,
+    });
+
+    console.log("Extracted");
+    console.dir(state.extractedOrder, {
+      depth: null,
+    });
+
+    console.log("================================");
+
+    /*
+     * ---------------------------------------
+     * Merge Extracted Data
+     * ---------------------------------------
+     */
+
+    activeItem = manager.mergeActiveItem(activeItem, state.extractedOrder);
+
+    console.log("Merged Item");
+
+    console.dir(activeItem, {
+      depth: null,
+    });
+
+    /*
+     * ---------------------------------------
+     * Validate Item
+     * ---------------------------------------
+     */
+
+    const validation = await validator.validate(activeItem);
+
+    if (!validation.valid) {
+      const nextField = manager.getNextMissingField(validation);
+
+      const normalized = manager.normalizeItem(activeItem);
+
+      return this.buildState({
+        status: "COLLECTING_ITEMS",
+
+        orderRequest,
+
+        activeOrderItem: normalized,
+
+        awaitingDecision: false,
+
+        currentStep: nextField ? nextField.toUpperCase() : null,
+
+        response: {
+          step: nextField ? nextField.toUpperCase() : null,
+
+          message: this.buildQuestion(nextField),
+
+          missingField: nextField,
+        },
+      });
+    }
+
+    /*
+     * ---------------------------------------
+     * Complete Item
+     * ---------------------------------------
+     */
+
+    const completedItem = manager.completeItem(activeItem);
+
+    orderRequest = manager.addOrUpdateItem(orderRequest, completedItem);
+
     manager.updateStatus(orderRequest, "DRAFT");
-    return {
+
+    orderRequest.activeOrderItem = null;
+
+    return this.buildState({
       status: "WAITING_FOR_NEXT_ITEM",
 
       orderRequest,
@@ -272,12 +396,245 @@ export default class OrderRequestService {
       response: {
         step: "NEXT_ITEM",
 
-        message: `${activeItem.product} has been added successfully.`,
+        message: `${completedItem.product} has been added successfully.`,
 
-        question: "Would you like to order another product?",
+        items: manager.buildSummary(orderRequest),
 
-        items: orderRequest.items,
+        actions: this.getNextItemActions(),
       },
+    });
+  }
+  getNextItemActions() {
+    return [
+      {
+        id: "ADD_ANOTHER_PRODUCT",
+        label: "Add Another Product",
+        value: "ADD_ANOTHER_PRODUCT",
+      },
+      {
+        id: "REVIEW_ORDER",
+        label: "Review Order",
+        value: "REVIEW_ORDER",
+      },
+    ];
+  }
+  getReviewActions() {
+    return [
+      {
+        id: "CONFIRM_ORDER",
+        label: "Confirm Order",
+        value: "CONFIRM_ORDER",
+      },
+      {
+        id: "MODIFY_ORDER",
+        label: "Modify Order",
+        value: "MODIFY_ORDER",
+      },
+    ];
+  }
+  buildState({
+    status,
+    orderRequest,
+    activeOrderItem = null,
+    awaitingDecision = false,
+    currentStep = null,
+    response = {},
+  }) {
+    if (orderRequest) {
+      orderRequest.activeOrderItem = activeOrderItem;
+    }
+
+    return {
+      status,
+
+      orderRequest,
+
+      activeOrderItem,
+
+      awaitingDecision,
+
+      currentStep,
+
+      response,
     };
+  }
+
+  /*
+   * ===================================================
+   * STEP : NEXT ITEM
+   * ===================================================
+   */
+
+  handleNextItemStep({ orderRequest, action, message }) {
+    /*
+     * ---------------------------------------
+     * Add Another Product
+     * ---------------------------------------
+     */
+
+    if (action === "ADD_ANOTHER_PRODUCT" || this.isAffirmative(message)) {
+      manager.updateStatus(orderRequest, "DRAFT");
+
+      return this.buildState({
+        status: "COLLECTING_ITEMS",
+
+        orderRequest,
+
+        activeOrderItem: null,
+
+        awaitingDecision: false,
+
+        currentStep: "COLLECT_PRODUCT",
+
+        response: {
+          step: "COLLECT_PRODUCT",
+
+          message: "Sure! Which product would you like to add next?",
+        },
+      });
+    }
+
+    /*
+     * ---------------------------------------
+     * Review Order
+     * ---------------------------------------
+     */
+
+    if (action === "REVIEW_ORDER" || this.wantsReview(message)) {
+      return this.buildState({
+        status: "ORDER_REVIEW",
+
+        orderRequest,
+
+        activeOrderItem: null,
+
+        awaitingDecision: true,
+
+        currentStep: "ORDER_REVIEW",
+
+        response: {
+          step: "ORDER_REVIEW",
+
+          message: "Please review your order.",
+
+          items: orderRequest.items,
+
+          actions: this.getReviewActions(),
+        },
+      });
+    }
+
+    /*
+     * ---------------------------------------
+     * Invalid Reply
+     * ---------------------------------------
+     */
+
+    return this.buildState({
+      status: "WAITING_FOR_ACTION",
+
+      orderRequest,
+
+      activeOrderItem: null,
+
+      awaitingDecision: true,
+
+      currentStep: "NEXT_ITEM",
+
+      response: {
+        message: "Please choose to add another product or review your order.",
+
+        actions: this.getNextItemActions(),
+      },
+    });
+  }
+  matches(message = "", keywords = []) {
+    message = message.trim().toLowerCase();
+
+    return keywords.some(
+      (keyword) =>
+        message === keyword ||
+        message.startsWith(keyword) ||
+        message.includes(keyword),
+    );
+  }
+  isAffirmative(message) {
+    return this.matches(message, [
+      "yes",
+      "yeah",
+      "yep",
+      "sure",
+      "ok",
+      "another",
+      "add another",
+      "one more",
+    ]);
+  }
+
+  wantsReview(message) {
+    return this.matches(message, [
+      "review",
+      "review order",
+      "show order",
+      "view order",
+      "checkout",
+      "finish",
+      "done",
+      "that's all",
+      "thats all",
+      "no",
+      "no thanks",
+    ]);
+  }
+
+  wantsConfirm(message) {
+    return this.matches(message, [
+      "confirm",
+      "submit",
+      "place order",
+      "looks good",
+      "all good",
+      "proceed",
+      "yes",
+      "yep",
+      "sure",
+      "ok",
+    ]);
+  }
+
+  getAction(state) {
+    return state.action?.id ?? state.action?.value ?? null;
+  }
+
+  /*
+   * ===================================================
+   * Question Builder
+   * ===================================================
+   */
+
+  buildQuestion(field) {
+    const questions = {
+      quantity: "How many units would you like to order?",
+
+      deadline: "When do you need the order delivered?",
+
+      artwork: "Do you already have the artwork ready?",
+
+      size: "What size do you need?",
+
+      material: "Which material would you prefer?",
+
+      finish: "Which finish would you like?",
+
+      color: "Which color do you need?",
+
+      pages: "How many pages do you need?",
+
+      gsm: "What GSM would you like?",
+
+      printingSides: "Should it be single-sided or double-sided?",
+    };
+
+    return questions[field] ?? `Please provide ${field}.`;
   }
 }

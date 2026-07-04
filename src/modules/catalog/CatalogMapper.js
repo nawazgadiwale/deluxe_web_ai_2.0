@@ -1,26 +1,51 @@
 import CatalogService from "./CatalogService.js";
 
-const catalog = new CatalogService();
+const catalogService = new CatalogService();
 
 export default class CatalogMapper {
+  /*
+   * =====================================================
+   * Product Details
+   * =====================================================
+   */
+
   async findProduct(text) {
-    return catalog.getTopMatches(text, 5);
+    return catalogService.findProductByName(text);
   }
 
-  async recommendProducts(text) {
-    const matches = await catalog.getTopMatches(text, 5);
+  /*
+   * =====================================================
+   * Recommendations
+   * =====================================================
+   */
 
-    return matches.map((item) => ({
-      product: item.metadata.product,
-      mainCategory: item.metadata.mainCategory,
-      subCategory: item.metadata.subCategory,
-      description: item.content,
+  async recommendProducts(text, limit = 5) {
+    const products = await catalogService.searchProducts(text, limit);
+
+    return products.map((product) => ({
+      product: product.metadata.product,
+
+      mainCategory: product.metadata.mainCategory,
+
+      subCategory: product.metadata.subCategory,
+
+      description: product.content,
+
+      metadata: product.metadata,
     }));
   }
 
-  async resolveSelection(data) {
-    const matches = await this.findProduct(data.product);
+  /*
+   * =====================================================
+   * Resolve User Selection
+   * =====================================================
+   */
 
-    return matches[0] ?? null;
+  async resolveSelection(selection) {
+    if (!selection?.product) {
+      return null;
+    }
+
+    return catalogService.findProductByName(selection.product);
   }
 }

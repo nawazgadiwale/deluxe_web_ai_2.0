@@ -13,7 +13,8 @@ export default class LoadSessionNode {
     if (!state.sessionId) {
       throw new Error("Session ID is required.");
     }
-
+    console.log("Loaded workflow:", state.workflow);
+    console.log("Loaded currentStep:", state.currentStep);
     /*
      * =====================================================
      * Conversation
@@ -23,7 +24,10 @@ export default class LoadSessionNode {
     let conversation = await conversationRepository.findBySessionId(
       state.sessionId,
     );
-
+    
+    state.awaitingDecision = ["NEXT_ITEM", "ORDER_REVIEW"].includes(
+      state.currentStep,
+    );
     if (!conversation) {
       conversation = await conversationRepository.create({
         sessionId: state.sessionId,

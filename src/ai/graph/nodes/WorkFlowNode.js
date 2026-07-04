@@ -2,16 +2,34 @@ export default class WorkflowNode {
   async execute(state) {
     const plan = [];
 
-    const capabilities = Array.isArray(state.capabilities)
-      ? state.capabilities
-      : [];
+    /*
+     * =========================================================
+     * Current Capability
+     * =========================================================
+     *
+     * RoutingNode stores the selected capability in:
+     *
+     * state.capability
+     *
+     * state.capabilities is optional and should only be used
+     * if multiple capabilities are ever returned.
+     */
 
-    const capability = capabilities[0] ?? "recommendation";
+    const capability =
+      state.capability ??
+      (Array.isArray(state.capabilities) && state.capabilities.length > 0
+        ? state.capabilities[0]
+        : "recommendation");
+
+    /*
+     * =========================================================
+     * Debug
+     * =========================================================
+     */
+
     console.log("Workflow :", state.workflow);
-    console.log("Capability :", state.capability);
+    console.log("Capability :", capability);
     console.log("Capabilities :", state.capabilities);
-
-
     /*
      * =========================================================
      * Resume Active Lead
@@ -206,6 +224,14 @@ export default class WorkflowNode {
         plan.push({
           node: "FAQNode",
           capability: "faq",
+        });
+        break;
+
+
+      case "greeting":
+        plan.push({
+          node: "GreetingNode",
+          capability: "greeting",
         });
         break;
 

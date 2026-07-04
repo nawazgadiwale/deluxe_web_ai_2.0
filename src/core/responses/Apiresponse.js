@@ -1,8 +1,14 @@
 export default class ResponseBuilder {
+  /*
+   * =====================================================
+   * Base Response
+   * =====================================================
+   */
+
   success({
     type = "text",
     message = null,
-    data = null,
+    data = {},
     actions = [],
     metadata = {},
   } = {}) {
@@ -16,59 +22,117 @@ export default class ResponseBuilder {
     };
   }
 
-  recommendation(recommendation, metadata = {}) {
+  /*
+   * =====================================================
+   * Recommendation
+   * =====================================================
+   */
+
+  recommendation(data, metadata = {}) {
     return this.success({
       type: "recommendation",
-      data: recommendation,
-      actions: recommendation.actions ?? [],
+      data,
+      actions: data?.actions ?? [],
       metadata,
     });
   }
 
-  order(order, metadata = {}) {
+  /*
+   * =====================================================
+   * Product Details
+   * (same renderer as recommendation)
+   * =====================================================
+   */
+
+  productDetails(data, metadata = {}) {
+    return this.success({
+      type: "recommendation",
+      data,
+      actions: data?.actions ?? [],
+      metadata,
+    });
+  }
+
+  /*
+   * =====================================================
+   * Order
+   * =====================================================
+   */
+
+  order(data, metadata = {}) {
     return this.success({
       type: "order",
-      data: order,
-      actions: order.actions ?? [],
+      data,
+      actions: data?.actions ?? [],
       metadata,
     });
   }
 
-  contact(contact, metadata = {}) {
+  /*
+   * =====================================================
+   * Lead
+   * =====================================================
+   */
+
+  lead(data, metadata = {}) {
     return this.success({
-      type: "contact",
-      data: contact,
-      actions: contact.actions ?? [],
+      type: "lead",
+      data,
+      actions: data?.actions ?? [],
       metadata,
     });
   }
 
-  support(response, metadata = {}) {
-    return this.success({
-      type: "support",
-      data: response,
-      actions: response.actions ?? [],
-      metadata,
-    });
-  }
+  /*
+   * =====================================================
+   * FAQ
+   * =====================================================
+   */
 
-  faq(response, metadata = {}) {
+  faq(data, metadata = {}) {
     return this.success({
       type: "faq",
-      data: response,
-      actions: response.actions ?? [],
+      data,
+      actions: data?.actions ?? [],
       metadata,
     });
   }
 
-  quotation(quotation, metadata = {}) {
+  /*
+   * =====================================================
+   * Support
+   * =====================================================
+   */
+
+  support(data, metadata = {}) {
     return this.success({
-      type: "quotation",
-      data: quotation,
-      actions: quotation.actions ?? [],
+      type: "support",
+      data,
+      actions: data?.actions ?? [],
       metadata,
     });
   }
+
+  /*
+   * =====================================================
+   * Quotation
+   * =====================================================
+   */
+
+  quotation(data, metadata = {}) {
+    return this.success({
+      type: "quotation",
+      data,
+      actions: data?.actions ?? [],
+      metadata,
+    });
+  }
+
+  /*
+   * =====================================================
+   * Text
+   * =====================================================
+   */
 
   text(message, actions = [], metadata = {}) {
     return this.success({
@@ -77,5 +141,22 @@ export default class ResponseBuilder {
       actions,
       metadata,
     });
+  }
+
+  /*
+   * =====================================================
+   * Error
+   * =====================================================
+   */
+
+  error(message, metadata = {}) {
+    return {
+      success: false,
+      type: "error",
+      message,
+      data: {},
+      actions: [],
+      metadata,
+    };
   }
 }

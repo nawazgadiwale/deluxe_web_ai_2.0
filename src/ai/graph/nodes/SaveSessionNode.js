@@ -94,6 +94,26 @@ export default class SaveSessionNode {
      * =====================================================
      */
 
+    /*
+     * =====================================================
+     * Sync Draft Item
+     * =====================================================
+     */
+
+    if (state.orderRequest) {
+      state.orderRequest.activeOrderItem = state.activeOrderItem ?? null;
+      state.orderRequest.updatedAt = new Date();
+    }
+
+    console.log("======================================");
+    console.log("SAVE ORDER REQUEST");
+    console.log("Dirty:", state.persistence?.orderRequest?.dirty);
+    console.log("Exists:", !!state.orderRequest);
+
+    if (state.orderRequest) {
+      console.dir(state.orderRequest, { depth: null });
+    }
+    console.log("======================================");
     if (state.persistence?.orderRequest?.dirty && state.orderRequest) {
       if (state.orderRequest._id) {
         state.orderRequest = await orderRequestRepository.update(
@@ -103,13 +123,18 @@ export default class SaveSessionNode {
           state.orderRequest,
         );
       } else {
-        state.orderRequest = await orderRequestRepository.create({
-          ...state.orderRequest,
+        try {
+          state.orderRequest = await orderRequestRepository.create({
+            ...state.orderRequest,
+            sessionId: state.sessionId,
+            conversationId: state.conversationId,
+          });
 
-          sessionId: state.sessionId,
-
-          conversationId: state.conversationId,
-        });
+          console.log("Order saved successfully");
+        } catch (err) {
+          console.error("ORDER SAVE FAILED");
+          console.error(err);
+        }
       }
 
       state.persistence.orderRequest.dirty = false;
@@ -120,7 +145,8 @@ export default class SaveSessionNode {
      * Persist Lead Request
      * =====================================================
      */
-
+    console.log("Saving workflow:", state.workflow);
+    console.log("Saving step:", state.currentStep);
     if (state.persistence?.leadRequest?.dirty && state.leadRequest) {
       if (state.leadRequest._id) {
         state.leadRequest = await leadRequestRepository.update(

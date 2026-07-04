@@ -13,8 +13,17 @@ export default class SalesAgent extends BaseAgent {
      * Generate Recommendation
      * =====================================================
      */
+    console.log("RecommendationNode Executed");
+
+    /*
+     * RecommendationService now handles both:
+     * - RECOMMENDATION
+     * - PRODUCT_DETAILS
+     */
 
     const result = await recommendationService.generate(state);
+
+    console.log("Recommendation generated");
 
     /*
      * =====================================================
@@ -42,6 +51,7 @@ export default class SalesAgent extends BaseAgent {
      */
 
     state.workflow = "RECOMMENDATION";
+    console.log("Workflow changed to:", state.workflow);
     state.currentStep = "SHOW_RECOMMENDATIONS";
     state.awaitingDecision = true;
 

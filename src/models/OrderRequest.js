@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 
+/*
+ * =====================================================
+ * Customer Snapshot
+ * =====================================================
+ */
+
 const customerSnapshotSchema = new mongoose.Schema(
   {
     name: {
@@ -32,6 +38,83 @@ const customerSnapshotSchema = new mongoose.Schema(
   },
 );
 
+/*
+ * =====================================================
+ * Active Order Item (Draft)
+ * Everything optional while collecting information.
+ * =====================================================
+ */
+
+const activeOrderItemSchema = new mongoose.Schema(
+  {
+    itemId: {
+      type: String,
+      default: null,
+    },
+
+    mainCategory: {
+      type: String,
+      default: null,
+    },
+
+    subCategory: {
+      type: String,
+      default: null,
+    },
+
+    product: {
+      type: String,
+      default: null,
+    },
+
+    quantity: {
+      type: Number,
+      default: null,
+    },
+
+    specifications: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    artwork: {
+      type: String,
+      default: null,
+    },
+
+    deadline: {
+      type: String,
+      default: null,
+    },
+
+    remarks: {
+      type: String,
+      default: null,
+    },
+
+    salesperson: {
+      type: String,
+      default: null,
+    },
+
+    status: {
+      type: String,
+      default: "COLLECTING",
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+/*
+ * =====================================================
+ * Final Order Item
+ * Only validated items are stored here.
+ * =====================================================
+ */
+
 const orderItemSchema = new mongoose.Schema(
   {
     itemId: {
@@ -56,7 +139,7 @@ const orderItemSchema = new mongoose.Schema(
 
     quantity: {
       type: Number,
-      default: null,
+      required: true,
     },
 
     specifications: {
@@ -72,6 +155,11 @@ const orderItemSchema = new mongoose.Schema(
 
     deadline: {
       type: Date,
+      required: true,
+    },
+
+    remarks: {
+      type: String,
       default: null,
     },
 
@@ -90,6 +178,12 @@ const orderItemSchema = new mongoose.Schema(
     _id: false,
   },
 );
+
+/*
+ * =====================================================
+ * Order Request
+ * =====================================================
+ */
 
 const orderRequestSchema = new mongoose.Schema(
   {
@@ -111,6 +205,17 @@ const orderRequestSchema = new mongoose.Schema(
       default: () => ({}),
     },
 
+    /*
+     * Draft item currently being collected
+     */
+    activeOrderItem: {
+      type: activeOrderItemSchema,
+      default: null,
+    },
+
+    /*
+     * Completed items
+     */
     items: {
       type: [orderItemSchema],
       default: [],
@@ -133,7 +238,15 @@ const orderRequestSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["DRAFT", "SUBMITTED", "PROCESSING", "COMPLETED", "CANCELLED"],
+      enum: [
+        "DRAFT",
+        "REVIEW",
+        "CUSTOMER_DETAILS",
+        "SUBMITTED",
+        "PROCESSING",
+        "COMPLETED",
+        "CANCELLED",
+      ],
       default: "DRAFT",
     },
   },

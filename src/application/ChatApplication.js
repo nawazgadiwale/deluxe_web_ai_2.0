@@ -52,6 +52,7 @@ export default class ChatApplication {
     conversationId = null,
     customerId = null,
     message,
+    action = null,
     attachments = [],
   }) {
     await this.startConversation(sessionId);
@@ -64,6 +65,8 @@ export default class ChatApplication {
       customerId,
 
       userMessage: message,
+
+      action,
 
       attachments,
     });

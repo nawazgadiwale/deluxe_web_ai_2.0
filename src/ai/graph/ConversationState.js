@@ -19,6 +19,10 @@ const ConversationState = Annotation.Root({
     default: () => "",
   }),
 
+  action: Annotation({
+    default: () => null,
+  }),
+
   attachments: Annotation({
     default: () => [],
   }),
@@ -155,6 +159,5 @@ const ConversationState = Annotation.Root({
     default: () => null,
   }),
 });
-
 
 export default ConversationState;

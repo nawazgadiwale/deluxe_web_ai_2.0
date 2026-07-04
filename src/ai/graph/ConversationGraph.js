@@ -13,6 +13,7 @@ import ResponseNode from "./nodes/ResponseNode.js";
 import SaveSessionNode from "./nodes/SaveSessionNode.js";
 import ConversationRouter from "./edges/ConversationRouter.js";
 import LeadNode from "./nodes/LeadNode.js";
+import GreetingNode from "./nodes/GreetingNode.js";
 
 const loadSessionNode = new LoadSessionNode();
 const routingNode = new RoutingNode();
@@ -24,6 +25,7 @@ const responseNode = new ResponseNode();
 const saveSessionNode = new SaveSessionNode();
 const conversationRouter = new ConversationRouter();
 const leadNode = new LeadNode();
+const greetingNode = new GreetingNode();
 
 export default function createConversationGraph() {
   const builder = new GraphBuilder(ConversationState);
@@ -52,8 +54,9 @@ export default function createConversationGraph() {
 
     .addNode("ResponseNode", responseNode.execute.bind(responseNode))
 
-    .addNode("SaveSessionNode", saveSessionNode.execute.bind(saveSessionNode));
+    .addNode("SaveSessionNode", saveSessionNode.execute.bind(saveSessionNode))
 
+    .addNode("GreetingNode", greetingNode.execute.bind(greetingNode));
   // -------------------------
   // Static Edges
   // -------------------------

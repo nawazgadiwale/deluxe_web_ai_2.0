@@ -24,8 +24,7 @@ async function startServer() {
     await dbConnect();
 
     await vectorStore.load(process.env.VECTOR_STORE_PATH);
-
-    await vectorStore.load(process.env.VECTOR_STORE_PATH);
+    console.log("VectorStore loaded successfully.");
 
     // console.log("Server loaded:", vectorStore.isLoaded());
     // console.log("VectorStore object:", vectorStore);
