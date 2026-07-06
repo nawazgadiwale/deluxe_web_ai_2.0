@@ -20,6 +20,8 @@ export default class MemoryService {
 
       recommendation: null,
 
+      recommendationContext: null,
+
       metadata: {},
     };
   }
@@ -50,10 +52,11 @@ export default class MemoryService {
 
       recommendation: conversation.memory?.recommendation ?? null,
 
+      recommendationContext: conversation.memory?.recommendationContext ?? null,
+
       metadata: conversation.metadata ?? {},
     };
   }
-
   merge(memory = {}, state = {}) {
     return {
       ...memory,
@@ -69,6 +72,9 @@ export default class MemoryService {
       leadRequest: state.leadRequest ?? memory.leadRequest,
 
       recommendation: state.recommendation ?? memory.recommendation,
+
+      recommendationContext:
+        state.recommendationContext ?? memory.recommendationContext,
 
       metadata: {
         ...(memory.metadata ?? {}),

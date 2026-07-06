@@ -1,5 +1,12 @@
 import OllamaProvider from "./providers/OllamaProvider.js";
 
+// openai model as provider use with key
+
+// import OpenAIProvider from "./providers/OpenAIProvider.js";
+
+// const provider = new OpenAIProvider();
+
+
 const provider = new OllamaProvider();
 
 export default class LLMService {
@@ -14,5 +21,5 @@ export default class LLMService {
   async stream(options) {
     return provider.stream(options);
   }
-  
+
 }

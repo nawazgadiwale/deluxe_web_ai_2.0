@@ -61,9 +61,63 @@ export default class WorkflowNode {
 
     /*
      * =========================================================
-     * Resume Active Order
+     * Resume Active Recommendation
      * =========================================================
      */
+
+    if (
+      state.workflow === "RECOMMENDATION" &&
+      state.currentStep &&
+      state.currentStep !== "SHOW_RECOMMENDATIONS"
+    ) {
+      if (capability === "recommendation") {
+        return this.finalize(state, [
+          {
+            node: "RecommendationNode",
+            capability: "recommendation",
+          },
+        ]);
+      }
+
+      /*
+       * Recommendation can be interrupted
+       */
+
+      if (capability === "order") {
+        state.workflow = null;
+        state.currentStep = null;
+        state.awaitingDecision = false;
+
+        return this.finalize(state, [
+          {
+            node: "OrderNode",
+            capability: "order",
+          },
+        ]);
+      }
+
+      if (capability === "lead") {
+        state.workflow = null;
+        state.currentStep = null;
+        state.awaitingDecision = false;
+
+        return this.finalize(state, [
+          {
+            node: "LeadNode",
+            capability: "lead",
+          },
+        ]);
+      }
+
+      if (capability === "faq" || capability === "support") {
+        return this.finalize(state, [
+          {
+            node: "FAQNode",
+            capability: "faq",
+          },
+        ]);
+      }
+    }
 
     /*
      * =========================================================
@@ -146,27 +200,43 @@ export default class WorkflowNode {
      * =========================================================
      */
 
-    if (state.workflow === "RECOMMENDATION" && state.awaitingDecision) {
-      /*
-       * Customer selected a recommendation.
-       * Switch to Order.
-       */
+    if (
+      state.workflow === "RECOMMENDATION" &&
+      state.currentStep === "SHOW_RECOMMENDATIONS"
+    ) {
+      switch (capability) {
+        case "order":
+          return this.finalize(state, [
+            {
+              node: "OrderNode",
+              capability: "order",
+            },
+          ]);
 
-      if (capability === "order") {
-        return this.finalize(state, [
-          {
-            node: "OrderNode",
-            capability: "order",
-          },
-        ]);
+        case "product_details":
+          return this.finalize(state, [
+            {
+              node: "RecommendationNode",
+              capability: "product_details",
+            },
+          ]);
+
+        case "lead":
+          return this.finalize(state, [
+            {
+              node: "LeadNode",
+              capability: "lead",
+            },
+          ]);
+
+        default:
+          return this.finalize(state, [
+            {
+              node: "RecommendationNode",
+              capability: "recommendation",
+            },
+          ]);
       }
-
-      return this.finalize(state, [
-        {
-          node: "RecommendationNode",
-          capability: "recommendation",
-        },
-      ]);
     }
 
     /*
@@ -226,7 +296,6 @@ export default class WorkflowNode {
           capability: "faq",
         });
         break;
-
 
       case "greeting":
         plan.push({

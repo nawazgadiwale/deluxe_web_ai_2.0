@@ -10,6 +10,30 @@ export default class RoutingNode {
      * =====================================================
      */
 
+    /*
+     * =====================================================
+     * Continue Recommendation Workflow
+     * =====================================================
+     */
+
+    const recommendationSteps = [
+      "ASK_CUSTOMER_TYPE",
+      "ASK_BUSINESS_TYPE",
+      "ASK_BUSINESS_GOAL",
+      "ASK_REQUIREMENTS",
+    ];
+
+    if (
+      state.workflow === "RECOMMENDATION" &&
+      recommendationSteps.includes(state.currentStep) &&
+      state.action
+    ) {
+      state.capability = "recommendation";
+      state.capabilities = ["recommendation"];
+      state.routingConfidence = 1;
+      return state;
+    }
+
     const routing = await routingService.route(state);
 
     /*

@@ -1,6 +1,39 @@
 import { ChatOllama } from "@langchain/ollama";
 import BaseProvider from "./BaseProvider.js";
 
+// openai model as provider use with key
+// import OpenAI from "openai";
+
+// export default class OpenAIProvider extends BaseProvider {
+//   constructor() {
+//     super();
+//     this.models = new Map();
+//   }
+
+//   getModel(options = {}) {
+//     const config = {
+//       model : options.model ?? "gpt-4o-mini",
+
+//       temprature: options.temperature ?? 0,
+
+//       topP: options.topP ?? 0.8,
+
+//       numPredict: options.numPredict ?? 350,
+
+//       numCtx: options.numCtx ?? 4096,
+//     };
+
+//     const key = JSON.stringify(config);
+
+//     if (!this.models.has(key)) {
+//       this.models.set(key, new OpenAI(config));
+//     }
+
+//     return this.models.get(key);
+//   }
+// }
+
+
 export default class OllamaProvider extends BaseProvider {
   constructor() {
     super();

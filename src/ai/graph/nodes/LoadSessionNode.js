@@ -13,8 +13,7 @@ export default class LoadSessionNode {
     if (!state.sessionId) {
       throw new Error("Session ID is required.");
     }
-    console.log("Loaded workflow:", state.workflow);
-    console.log("Loaded currentStep:", state.currentStep);
+
     /*
      * =====================================================
      * Conversation
@@ -24,7 +23,7 @@ export default class LoadSessionNode {
     let conversation = await conversationRepository.findBySessionId(
       state.sessionId,
     );
-    
+
     state.awaitingDecision = ["NEXT_ITEM", "ORDER_REVIEW"].includes(
       state.currentStep,
     );
@@ -74,6 +73,9 @@ export default class LoadSessionNode {
 
     state.currentStep = conversation.currentStep ?? null;
 
+    console.log("Loaded workflow:", state.workflow);
+    console.log("Loaded currentStep:", state.currentStep);
+
     state.metadata = conversation.metadata ?? {};
 
     state.memory = memoryService.build(conversation);
@@ -84,6 +86,19 @@ export default class LoadSessionNode {
      */
 
     state.recommendation = state.memory.recommendation ?? null;
+
+    state.recommendationContext = state.memory.recommendationContext ?? {
+      customerType: null,
+      businessType: null,
+      businessGoal: null,
+      requirements: null,
+      originalQuery: null,
+
+      products: [],
+      totalProducts: 0,
+      page: 1,
+      hasMore: false,
+    };
     /*
      * =====================================================
      * Load Active Order

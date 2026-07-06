@@ -10,6 +10,11 @@ const memoryService = new MemoryService();
 
 export default class SaveSessionNode {
   async execute(state) {
+    console.log("========== SAVE NODE ENTRY ==========");
+    console.log("Dirty:", state.persistence?.conversation?.dirty);
+    console.log("Workflow:", state.workflow);
+    console.log("Step:", state.currentStep);
+    console.log("=====================================");
     /*
      * =====================================================
      * Synchronize Customer Snapshot
@@ -59,7 +64,12 @@ export default class SaveSessionNode {
      * Persist Conversation
      * =====================================================
      */
-
+    console.log("======================================");
+    console.log("SAVE CONVERSATION");
+    console.log("Conversation Dirty:", state.persistence?.conversation?.dirty);
+    console.log("Workflow:", state.workflow);
+    console.log("Current Step:", state.currentStep);
+    console.log("======================================");
     if (state.persistence?.conversation?.dirty) {
       await conversationRepository.update(
         {
@@ -87,6 +97,14 @@ export default class SaveSessionNode {
 
       state.persistence.conversation.dirty = false;
     }
+    console.log("Conversation Updated.");
+
+    const verify = await conversationRepository.findBySessionId(
+      state.sessionId,
+    );
+
+    console.log("Mongo Workflow:", verify.workflow);
+    console.log("Mongo Step:", verify.currentStep);
 
     /*
      * =====================================================
@@ -145,8 +163,7 @@ export default class SaveSessionNode {
      * Persist Lead Request
      * =====================================================
      */
-    console.log("Saving workflow:", state.workflow);
-    console.log("Saving step:", state.currentStep);
+
     if (state.persistence?.leadRequest?.dirty && state.leadRequest) {
       if (state.leadRequest._id) {
         state.leadRequest = await leadRequestRepository.update(
@@ -167,6 +184,8 @@ export default class SaveSessionNode {
 
       state.persistence.leadRequest.dirty = false;
     }
+    console.log("Saving workflow:", state.workflow);
+    console.log("Saving step:", state.currentStep);
 
     return state;
   }

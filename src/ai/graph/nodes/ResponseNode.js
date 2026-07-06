@@ -136,6 +136,9 @@ export default class WorkflowNode {
     ];
 
     state.currentExecutionIndex = 0;
+    console.log("====== RESPONSE NODE ======");
+    console.log(state.persistence);
+    console.log("===========================");
 
     return state;
   }

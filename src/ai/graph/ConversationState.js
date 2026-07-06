@@ -89,6 +89,16 @@ const ConversationState = Annotation.Root({
     default: () => null,
   }),
 
+  recommendationContext: Annotation({
+    default: () => ({
+      customerType: null,
+      businessType: null,
+      businessGoal: null,
+      requirements: null,
+      originalQuery: null,
+    }),
+  }),
+
   // RAG
   rag: Annotation({
     default: () => ({

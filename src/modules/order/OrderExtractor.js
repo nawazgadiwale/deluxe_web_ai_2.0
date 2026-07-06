@@ -564,7 +564,7 @@ export default class OrderExtractor {
 
     console.log("\nMatched Recommendation:", recommendation.product);
 
-    const product = await catalogService.findProductByName(
+    const product = await catalogService.getProductByAction(
       recommendation.product,
     );
 
