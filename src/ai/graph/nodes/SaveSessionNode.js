@@ -1,10 +1,8 @@
 import ConversationRepository from "../../../repositories/ConversationRepository.js";
-import OrderRequestRepository from "../../../repositories/OrderRequestRepository.js";
 import LeadRequestRepository from "../../../repositories/LeadRepository.js";
 import MemoryService from "../../../modules/memory/MemoryService.js";
 
 const conversationRepository = new ConversationRepository();
-const orderRequestRepository = new OrderRequestRepository();
 const leadRequestRepository = new LeadRequestRepository();
 const memoryService = new MemoryService();
 
@@ -25,13 +23,6 @@ export default class SaveSessionNode {
       state.customer = {
         ...(state.customer ?? {}),
         ...state.leadRequest.customer,
-      };
-    }
-
-    if (state.orderRequest?.customer) {
-      state.customer = {
-        ...(state.customer ?? {}),
-        ...state.orderRequest.customer,
       };
     }
 
@@ -105,58 +96,6 @@ export default class SaveSessionNode {
 
     console.log("Mongo Workflow:", verify.workflow);
     console.log("Mongo Step:", verify.currentStep);
-
-    /*
-     * =====================================================
-     * Persist Order Request
-     * =====================================================
-     */
-
-    /*
-     * =====================================================
-     * Sync Draft Item
-     * =====================================================
-     */
-
-    if (state.orderRequest) {
-      state.orderRequest.activeOrderItem = state.activeOrderItem ?? null;
-      state.orderRequest.updatedAt = new Date();
-    }
-
-    console.log("======================================");
-    console.log("SAVE ORDER REQUEST");
-    console.log("Dirty:", state.persistence?.orderRequest?.dirty);
-    console.log("Exists:", !!state.orderRequest);
-
-    if (state.orderRequest) {
-      console.dir(state.orderRequest, { depth: null });
-    }
-    console.log("======================================");
-    if (state.persistence?.orderRequest?.dirty && state.orderRequest) {
-      if (state.orderRequest._id) {
-        state.orderRequest = await orderRequestRepository.update(
-          {
-            _id: state.orderRequest._id,
-          },
-          state.orderRequest,
-        );
-      } else {
-        try {
-          state.orderRequest = await orderRequestRepository.create({
-            ...state.orderRequest,
-            sessionId: state.sessionId,
-            conversationId: state.conversationId,
-          });
-
-          console.log("Order saved successfully");
-        } catch (err) {
-          console.error("ORDER SAVE FAILED");
-          console.error(err);
-        }
-      }
-
-      state.persistence.orderRequest.dirty = false;
-    }
 
     /*
      * =====================================================

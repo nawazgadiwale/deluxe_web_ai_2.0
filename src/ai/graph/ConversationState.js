@@ -42,15 +42,7 @@ const ConversationState = Annotation.Root({
     default: () => null,
   }),
 
-  orderRequest: Annotation({
-    default: () => null,
-  }),
-
   leadRequest: Annotation({
-    default: () => null,
-  }),
-
-  activeOrderItem: Annotation({
     default: () => null,
   }),
 
@@ -65,11 +57,6 @@ const ConversationState = Annotation.Root({
 
   routingConfidence: Annotation({
     default: () => 0,
-  }),
-
-  // Order extraction
-  extractedOrder: Annotation({
-    default: () => ({}),
   }),
 
   // Customer extraction
@@ -126,12 +113,12 @@ const ConversationState = Annotation.Root({
         updatedAt: null,
       },
 
-      orderRequest: {
+      conversation: {
         dirty: false,
         updatedAt: null,
       },
 
-      conversation: {
+      leadRequest: {
         dirty: false,
         updatedAt: null,
       },
@@ -168,6 +155,15 @@ const ConversationState = Annotation.Root({
   capability: Annotation({
     default: () => null,
   }),
+
+  selectedProduct: Annotation({
+    default: () => null,
+  }),
+
+  comparisonProducts: Annotation({
+    default: () => [],
+  }),
+
 });
 
 export default ConversationState;

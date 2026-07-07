@@ -11,7 +11,7 @@ const ranker = new ReciprocalRankFusion();
 
 export default class HybridRetriever {
   async retrieve(options = {}) {
-    const { query, filter = {}, topK = 20 } = options;
+    const { query, filter = {}, topK = 5 } = options;
 
     if (!query) {
       return [];

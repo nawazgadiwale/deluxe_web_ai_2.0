@@ -19,7 +19,7 @@ export default class CatalogMapper {
    * =====================================================
    */
 
-  async recommendProducts(text, limit = 5) {
+  async searchProducts(text, limit = 5) {
     const products = await catalogService.searchProducts(text, limit);
 
     return products.map((product) => ({

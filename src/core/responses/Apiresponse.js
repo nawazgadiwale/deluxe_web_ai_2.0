@@ -69,6 +69,23 @@ export default class ResponseBuilder {
   }
 
   /*
+  *comparison 
+  */
+  comparison(data) {
+    return {
+      type: "comparison",
+
+      summary: data.summary,
+
+      comparison: data.comparison,
+
+      products: data.products,
+
+      actions: data.actions ?? [],
+    };
+  }
+
+  /*
    * =====================================================
    * Lead
    * =====================================================

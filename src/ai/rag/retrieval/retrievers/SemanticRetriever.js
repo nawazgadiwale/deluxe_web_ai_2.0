@@ -1,21 +1,42 @@
 import vectorStore from "../../VectorStore.js";
 
 export default class SemanticRetriever {
-  async retrieve(query, options = {}) {
+  constructor() {
+    this.retrieverCache = new Map();
+  }
 
-    console.log("Retriever loaded:", vectorStore.isLoaded());
-
-    const retriever = vectorStore.asRetriever({
-      k: options.k ?? 10,
+  getRetriever(options = {}) {
+    const key = JSON.stringify({
+      k: options.k ?? 4,
       filter: options.filter,
     });
 
-    const documents = await retriever.invoke(query);
+    if (!this.retrieverCache.has(key)) {
+      this.retrieverCache.set(
+        key,
+        vectorStore.asRetriever({
+          k: options.k ?? 4,
+          filter: options.filter,
+        }),
+      );
+    }
 
-    return documents.map((document) => ({
-      ...document,
+    return this.retrieverCache.get(key);
+  }
+
+  async retrieve(query, options = {}) {
+    const retriever = this.getRetriever(options);
+
+    console.time("Semantic Invoke");
+
+    const docs = await retriever.invoke(query);
+
+    console.timeEnd("Semantic Invoke");
+
+    return docs.map((doc) => ({
+      ...doc,
       metadata: {
-        ...document.metadata,
+        ...doc.metadata,
         retrievalMethod: "semantic",
       },
     }));

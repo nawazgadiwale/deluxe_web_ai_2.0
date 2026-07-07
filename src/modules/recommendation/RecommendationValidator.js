@@ -1,176 +1,8 @@
-// // updated
-// import CatalogService from "../catalog/CatalogService.js";
-
-// const catalogService = new CatalogService();
-
-// export default class RecommendationValidator {
-//   async validate(llmResponse, catalogMatches = []) {
-//     llmResponse ??= {};
-
-//     // /* Build LLM Explanation Map
-//     const explanations = new Map();
-
-//     for (const item of llmResponse.reasons ?? []) {
-//       if (!item?.product) continue;
-
-//       explanations.set(item.product.toLowerCase(), {
-//         reason: item.reason,
-//         priority: Number(item.priority ?? 999),
-//       });
-//     }
-
-//     // /* Remove Duplicate Products
-//     const uniqueProducts = new Map();
-
-//     for (const match of catalogMatches) {
-//       const product = match.metadata?.product;
-
-//       if (!product) continue;
-
-//       const key = product.toLowerCase();
-
-//       if (!uniqueProducts.has(key)) {
-//         uniqueProducts.set(key, match);
-//       }
-//     }
-
-//     // /* Build Response
-//     const products = [];
-
-//     for (const match of uniqueProducts.values()) {
-//       const metadata = match.metadata ?? {};
-
-//       const productName = metadata.product;
-
-//       if (!productName) continue;
-
-//       let catalogProduct = match;
-
-//       // Fallback if retrieval returned partial metadata
-//       if (!catalogProduct.metadata.relatedProducts) {
-//         catalogProduct =
-//           (await catalogService.findProductByName(productName)) ?? match;
-//       }
-
-//       const explanation = explanations.get(productName.toLowerCase()) ?? {};
-
-//       products.push({
-//         product: catalogProduct.metadata.product,
-
-//         reason:
-//           explanation.reason ?? "Suitable for your business requirements.",
-
-//         relatedProducts: catalogProduct.metadata.relatedProducts ?? [],
-
-//         frequentlyBoughtWith:
-//           catalogProduct.metadata.frequentlyBoughtWith ?? [],
-
-//         actions: [
-//           {
-//             id: "SHOW_PRODUCT_DETAILS",
-
-//             label: "Show More",
-
-//             value: "SHOW_PRODUCT_DETAILS",
-
-//             payload: {
-//               product: catalogProduct.metadata.product,
-//             },
-//           },
-//           {
-//             id: "ORDER_PRODUCT",
-
-//             label: "Order",
-
-//             value: "ORDER_PRODUCT",
-
-//             payload: {
-//               product: catalogProduct.metadata.product,
-//             },
-//           },
-//         ],
-
-//         priority: explanation.priority ?? 999,
-//       });
-//     }
-
-//     // /* Sort by LLM Priority
-//     products.sort((a, b) => a.priority - b.priority);
-
-//     // /* Remove Internal Priority
-//     const finalProducts = products.map(({ priority, ...product }) => product);
-
-//     // /* Response
-//     return {
-//       summary:
-//         llmResponse.summary ??
-//         "Here are the most relevant products for your business.",
-
-//       followUpQuestion:
-//         llmResponse.followUpQuestion ??
-//         "Would you like to know more about any of these products?",
-
-//       products: finalProducts,
-//     };
-//   }
-// }
-
-// updated without duplicate products
 export default class RecommendationValidator {
-  async validate({ llm = {}, products = [], mode = "RECOMMENDATION" }) {
+  async validate({ llm = {}, products = [] }) {
     /*
      * =====================================================
-     * PRODUCT DETAILS
-     * =====================================================
-     */
-
-    if (mode === "PRODUCT_DETAILS") {
-      const item = products[0];
-
-      if (!item) {
-        return {
-          summary: "Product not found.",
-          followUpQuestion: "",
-          products: [],
-        };
-      }
-
-      const metadata = item.metadata ?? {};
-
-      return {
-        summary: llm.summary,
-
-        followUpQuestion:
-          llm.followUpQuestion ?? "Would you like to order this product?",
-
-        products: [
-          {
-            product: metadata.product,
-
-            reason: llm.summary,
-
-            relatedProducts: metadata.relatedProducts ?? [],
-
-            frequentlyBoughtWith: metadata.frequentlyBoughtWith ?? [],
-
-            actions: [
-              {
-                id: "ORDER_PRODUCT",
-                label: "Order",
-                value: "ORDER_PRODUCT",
-                payload: {
-                  product: metadata.product,
-                },
-              },
-            ],
-          },
-        ],
-      };
-    }
-
-    /*
-     * =====================================================
-     * LLM Reasons
+     * Build LLM Reason Map
      * =====================================================
      */
 
@@ -179,66 +11,81 @@ export default class RecommendationValidator {
     for (const item of llm.reasons ?? []) {
       if (!item?.product) continue;
 
-      reasonMap.set(item.product.toLowerCase(), item.reason);
+      reasonMap.set(item.product.trim().toLowerCase(), item.reason);
     }
 
     /*
      * =====================================================
-     * Build Products
+     * Build Response Products
      * =====================================================
      */
-    const responseProducts = products.map((item, index) => {
+
+    const responseProducts = products.map((item) => {
       const metadata = item.metadata ?? {};
 
-      const llmReason = reasonMap.get(metadata.product?.toLowerCase());
+      const productName = metadata.product ?? "";
+
+      const summary =
+        metadata.shortDescription ??
+        metadata.description ??
+        (item.pageContent ?? item.content ?? "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 180);
 
       return {
-        product: metadata.product,
+        product: productName,
 
-        // Needed by OrderExtractor
-        mainCategory: metadata.mainCategory,
-        subCategory: metadata.subCategory,
+        summary,
 
-        // Useful for Product Details
-        description: item.content,
-
-        reason: llmReason ?? this.buildCatalogReason(metadata),
+        reason:
+          reasonMap.get(productName.trim().toLowerCase()) ??
+          this.buildCatalogReason(metadata),
 
         relatedProducts: metadata.relatedProducts ?? [],
 
         frequentlyBoughtWith: metadata.frequentlyBoughtWith ?? [],
 
+        score: metadata.finalScore ?? metadata.hybridScore ?? metadata.score,
+
+        retrievalMethods: metadata.retrievalMethods ?? [],
+
         actions: [
           {
             id: "SHOW_PRODUCT_DETAILS",
+
             label: "Show More",
-            value: "SHOW_PRODUCT_DETAILS",
+
             payload: {
-              product: metadata.product,
-            },
-          },
-          {
-            id: "ORDER_PRODUCT",
-            label: "Order",
-            value: "ORDER_PRODUCT",
-            payload: {
-              product: metadata.product,
+              product: productName,
+
+              mainCategory: metadata.mainCategory,
+
+              subCategory: metadata.subCategory,
             },
           },
         ],
-
-        priority: index + 1,
       };
     });
 
+    /*
+     * =====================================================
+     * Final Response
+     * =====================================================
+     */
+
     return {
-      summary: llm.summary ?? "Here are the recommended products.",
+      type: "recommendation",
+
+      summary:
+        llm.summary ??
+        "Here are the products that best match your requirements.",
 
       followUpQuestion:
         llm.followUpQuestion ??
-        "Would you like to know more about any of these products?",
+        "Would you like more details about any product?",
 
-      products: responseProducts.map(({ priority, ...product }) => product),
+      products: responseProducts,
     };
   }
 
@@ -253,24 +100,26 @@ export default class RecommendationValidator {
 
     const goal = metadata.customerGoals?.slice(0, 2).join(", ");
 
-    const useCase = metadata.useCases?.[0];
+    const useCase = metadata.useCases?.slice(0, 2).join(", ");
+
+    const industries = metadata.industries?.slice(0, 2).join(", ");
 
     if (business && goal) {
-      return `Ideal for ${business} businesses to support ${goal.toLowerCase()}.`;
+      return `Ideal for ${business} businesses looking to ${goal.toLowerCase()}.`;
     }
 
-    if (business) {
-      return `Suitable for ${business} businesses.`;
+    if (industries && goal) {
+      return `Recommended for ${industries} businesses focused on ${goal.toLowerCase()}.`;
     }
 
     if (goal) {
-      return `Helps improve ${goal.toLowerCase()}.`;
+      return `Helps achieve ${goal.toLowerCase()}.`;
     }
 
     if (useCase) {
-      return `Recommended for ${useCase.toLowerCase()}.`;
+      return `Best suited for ${useCase.toLowerCase()}.`;
     }
 
-    return "Suitable for your business requirements.";
+    return "Recommended based on your requirements.";
   }
 }

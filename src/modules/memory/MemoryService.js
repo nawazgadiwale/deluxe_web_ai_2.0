@@ -14,11 +14,13 @@ export default class MemoryService {
 
       currentStep: null,
 
-      orderRequest: null,
-
       leadRequest: null,
 
       recommendation: null,
+
+      selectedProduct: null,
+
+      comparisonProducts: [],
 
       recommendationContext: null,
 
@@ -45,14 +47,15 @@ export default class MemoryService {
       workflow: conversation.workflow ?? null,
 
       currentStep: conversation.currentStep ?? null,
-
-      orderRequest: null,
-
-      leadRequest: null,
+      selectedProduct: null,
 
       recommendation: conversation.memory?.recommendation ?? null,
 
       recommendationContext: conversation.memory?.recommendationContext ?? null,
+
+      selectedProduct: conversation.memory?.selectedProduct ?? null,
+
+      comparisonProducts: conversation.memory?.comparisonProducts ?? [],
 
       metadata: conversation.metadata ?? {},
     };
@@ -67,14 +70,16 @@ export default class MemoryService {
 
       currentStep: state.currentStep ?? memory.currentStep,
 
-      orderRequest: state.orderRequest ?? memory.orderRequest,
-
       leadRequest: state.leadRequest ?? memory.leadRequest,
 
       recommendation: state.recommendation ?? memory.recommendation,
 
       recommendationContext:
         state.recommendationContext ?? memory.recommendationContext,
+
+      selectedProduct: state.selectedProduct ?? memory.selectedProduct,
+
+      comparisonProducts: state.comparisonProducts ?? memory.comparisonProducts,
 
       metadata: {
         ...(memory.metadata ?? {}),

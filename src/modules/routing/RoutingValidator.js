@@ -1,44 +1,23 @@
 const VALID_CAPABILITIES = [
   "greeting",
   "recommendation",
+  "discovery",
   "product_details",
-  "order",
-  "lead",
-  "support",
+  "comparison",
   "faq",
+  "support",
+  "lead",
 ];
+
 const VALID_SOURCES = ["ACTION", "RULE", "LLM", "FALLBACK"];
 
 export default class RoutingValidator {
   validate(result = {}) {
-    let capability = "recommendation";
+    const capability = this.validateCapability(result.capability);
 
-    if (
-      typeof result.capability === "string" &&
-      VALID_CAPABILITIES.includes(result.capability)
-    ) {
-      capability = result.capability;
-    }
+    const confidence = this.validateConfidence(result.confidence);
 
-    let confidence = Number(result.confidence ?? 0);
-
-    if (Number.isNaN(confidence)) {
-      confidence = 0;
-    }
-
-    confidence = Math.max(0, Math.min(confidence, 1));
-
-    const source = VALID_SOURCES.includes(result.source)
-      ? result.source
-      : "RULE";
-
-    /*
-     * Low-confidence LLM → safe fallback.
-     */
-
-    if (source === "LLM" && confidence < 0.7) {
-      capability = "recommendation";
-    }
+    const source = this.validateSource(result.source);
 
     return {
       capability,
@@ -46,5 +25,34 @@ export default class RoutingValidator {
       confidence,
       source,
     };
+  }
+
+  validateCapability(capability) {
+    if (
+      typeof capability === "string" &&
+      VALID_CAPABILITIES.includes(capability)
+    ) {
+      return capability;
+    }
+
+    return "recommendation";
+  }
+
+  validateConfidence(confidence) {
+    const value = Number(confidence);
+
+    if (Number.isNaN(value)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.min(value, 1));
+  }
+
+  validateSource(source) {
+    if (VALID_SOURCES.includes(source)) {
+      return source;
+    }
+
+    return "RULE";
   }
 }

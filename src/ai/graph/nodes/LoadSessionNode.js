@@ -1,10 +1,9 @@
 import ConversationRepository from "../../../repositories/ConversationRepository.js";
-import OrderRequestRepository from "../../../repositories/OrderRequestRepository.js";
 import LeadRequestRepository from "../../../repositories/LeadRepository.js";
 import MemoryService from "../../../modules/memory/MemoryService.js";
 
 const conversationRepository = new ConversationRepository();
-const orderRequestRepository = new OrderRequestRepository();
+
 const leadRequestRepository = new LeadRequestRepository();
 const memoryService = new MemoryService();
 
@@ -23,10 +22,8 @@ export default class LoadSessionNode {
     let conversation = await conversationRepository.findBySessionId(
       state.sessionId,
     );
+    state.awaitingDecision = false;
 
-    state.awaitingDecision = ["NEXT_ITEM", "ORDER_REVIEW"].includes(
-      state.currentStep,
-    );
     if (!conversation) {
       conversation = await conversationRepository.create({
         sessionId: state.sessionId,
@@ -99,18 +96,10 @@ export default class LoadSessionNode {
       page: 1,
       hasMore: false,
     };
-    /*
-     * =====================================================
-     * Load Active Order
-     * =====================================================
-     */
 
-    const orderRequest =
-      await orderRequestRepository.findActiveByConversationId(conversation._id);
+    state.selectedProduct = state.memory.selectedProduct ?? null;
 
-    state.orderRequest = orderRequest ?? null;
-
-    state.activeOrderItem = orderRequest?.activeOrderItem ?? null;
+    state.comparisonProducts = state.memory.comparisonProducts ?? [];
 
     /*
      * =====================================================
@@ -149,11 +138,6 @@ export default class LoadSessionNode {
       },
 
       customer: {
-        dirty: false,
-        updatedAt: null,
-      },
-
-      orderRequest: {
         dirty: false,
         updatedAt: null,
       },

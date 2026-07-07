@@ -20,11 +20,13 @@ export default class EmbeddingService {
    * Generates an embedding for a user query.
    */
   async embedQuery(query) {
-    if (!query || typeof query !== "string") {
-      throw new Error("Query must be a non-empty string.");
-    }
+    console.time("Embedding");
 
-    return this.#embeddingModel.embedQuery(query);
+    const result = await this.#embeddingModel.embedQuery(query);
+
+    console.timeEnd("Embedding");
+
+    return result;
   }
 
   /**

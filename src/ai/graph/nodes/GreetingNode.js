@@ -6,11 +6,11 @@ export default class GreetingNode {
   async execute(state) {
     /*
      * =====================================================
-     * Greeting Workflow
+     * Greeting is Stateless
      * =====================================================
      */
 
-    state.workflow = "GREETING";
+    state.workflow = null;
     state.currentStep = null;
     state.awaitingDecision = false;
 
@@ -20,8 +20,11 @@ export default class GreetingNode {
      * =====================================================
      */
 
-    state.persistence.conversation.dirty = true;
-    state.persistence.conversation.updatedAt = new Date();
+    state.persistence.conversation = {
+      ...state.persistence.conversation,
+      dirty: true,
+      updatedAt: new Date(),
+    };
 
     /*
      * =====================================================
@@ -33,7 +36,7 @@ export default class GreetingNode {
       type: "greeting",
 
       message:
-        "Hello! 👋 Welcome to Deluxe Printing. I'm your AI Assistant. I can recommend products, explain product details, help you place an order, or connect you with our sales team. How can I assist you today?",
+        "Hello! 👋 Welcome to Deluxe Printing. I'm your AI Assistant. I can help you discover products, recommend solutions for your business or personal needs, explain product details, compare products, answer company questions, assist with orders, or connect you with our sales team. How can I assist you today?",
     });
 
     return state;

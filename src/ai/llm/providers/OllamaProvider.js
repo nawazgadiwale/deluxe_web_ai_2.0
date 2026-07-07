@@ -33,7 +33,6 @@ import BaseProvider from "./BaseProvider.js";
 //   }
 // }
 
-
 export default class OllamaProvider extends BaseProvider {
   constructor() {
     super();
@@ -111,3 +110,4 @@ export default class OllamaProvider extends BaseProvider {
     ]);
   }
 }
+

@@ -7,7 +7,6 @@ import LoadSessionNode from "./nodes/LoadSessionNode.js";
 import RoutingNode from "./nodes/RoutingNode.js";
 import WorkflowNode from "./nodes/WorkflowNode.js";
 import RecommendationNode from "./nodes/RecommendationNode.js";
-import OrderNode from "./nodes/OrderNode.js";
 import FAQNode from "./nodes/FAQNode.js";
 import ResponseNode from "./nodes/ResponseNode.js";
 import SaveSessionNode from "./nodes/SaveSessionNode.js";
@@ -15,17 +14,22 @@ import ConversationRouter from "./edges/ConversationRouter.js";
 import LeadNode from "./nodes/LeadNode.js";
 import GreetingNode from "./nodes/GreetingNode.js";
 
+import ProductDetailsNode from "./nodes/ProductDetailsNode.js";
+import ComparisonNode from "./nodes/ComparisonNode.js";
+
 const loadSessionNode = new LoadSessionNode();
 const routingNode = new RoutingNode();
 const workflowNode = new WorkflowNode();
 const recommendationNode = new RecommendationNode();
-const orderNode = new OrderNode();
 const faqNode = new FAQNode();
 const responseNode = new ResponseNode();
 const saveSessionNode = new SaveSessionNode();
 const conversationRouter = new ConversationRouter();
 const leadNode = new LeadNode();
 const greetingNode = new GreetingNode();
+const productDetailsNode = new ProductDetailsNode();
+
+const comparisonNode = new ComparisonNode();
 
 export default function createConversationGraph() {
   const builder = new GraphBuilder(ConversationState);
@@ -46,8 +50,6 @@ export default function createConversationGraph() {
       recommendationNode.execute.bind(recommendationNode),
     )
 
-    .addNode("OrderNode", orderNode.execute.bind(orderNode))
-
     .addNode("LeadNode", leadNode.execute.bind(leadNode))
 
     .addNode("FAQNode", faqNode.execute.bind(faqNode))
@@ -56,7 +58,15 @@ export default function createConversationGraph() {
 
     .addNode("SaveSessionNode", saveSessionNode.execute.bind(saveSessionNode))
 
-    .addNode("GreetingNode", greetingNode.execute.bind(greetingNode));
+    .addNode("GreetingNode", greetingNode.execute.bind(greetingNode))
+
+    .addNode(
+      "ProductDetailsNode",
+      productDetailsNode.execute.bind(productDetailsNode),
+    )
+
+    .addNode("ComparisonNode", comparisonNode.execute.bind(comparisonNode));
+    
   // -------------------------
   // Static Edges
   // -------------------------
@@ -83,9 +93,11 @@ export default function createConversationGraph() {
 
   const capabilityNodes = [
     "RecommendationNode",
-    "OrderNode",
+    "ProductDetailsNode",
+    "ComparisonNode",
     "LeadNode",
     "FAQNode",
+    "GreetingNode",
   ];
 
   capabilityNodes.forEach((node) => {

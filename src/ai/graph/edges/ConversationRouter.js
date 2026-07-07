@@ -1,23 +1,49 @@
 export default class ConversationRouter {
-  route(state) {
-    const { executionPlan = [], currentExecutionIndex = 0 } = state;
+  /*
+   * =====================================================
+   * First Node
+   * =====================================================
+   */
 
-    if (currentExecutionIndex >= executionPlan.length) {
+  route(state) {
+    const executionPlan = state.executionPlan ?? [];
+    const index = state.currentExecutionIndex ?? 0;
+
+    if (!executionPlan.length || index >= executionPlan.length) {
       return "ResponseNode";
     }
 
-    return executionPlan[currentExecutionIndex].node;
+    return executionPlan[index].node;
   }
 
+  /*
+   * =====================================================
+   * Next Node
+   * =====================================================
+   */
+
   continue(state) {
-    state.currentExecutionIndex += 1;
+    state.currentExecutionIndex = (state.currentExecutionIndex ?? 0) + 1;
 
-    const { executionPlan = [], currentExecutionIndex } = state;
+    const executionPlan = state.executionPlan ?? [];
 
-    if (currentExecutionIndex >= executionPlan.length) {
+    if (state.currentExecutionIndex >= executionPlan.length) {
       return "ResponseNode";
     }
 
-    return executionPlan[currentExecutionIndex].node;
+    return executionPlan[state.currentExecutionIndex].node;
+  }
+
+  /*
+   * =====================================================
+   * Reset
+   * =====================================================
+   */
+
+  reset(state) {
+    state.executionPlan = [];
+    state.currentExecutionIndex = 0;
+
+    return "ResponseNode";
   }
 }

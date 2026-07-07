@@ -1,282 +1,320 @@
-// new clean and updated without duplicate product removal and ranking logic
-import LLMService from "../../ai/llm/LLMService.js";
-import RAGPipeline from "../../ai/rag/retrieval/RagPipeline.js";
-import RecommendationPrompt from "../../ai/llm/prompts/RecommendationPrompt.js";
+import { jsonrepair } from "jsonrepair";
+
 import CatalogService from "../catalog/CatalogService.js";
 
-const llmService = new LLMService();
-const ragPipeline = new RAGPipeline();
-const catalogService = new CatalogService();
+import RecommendationPrompt from "../../ai/llm/prompts/RecommendationPrompt.js";
+import LLMService from "../../ai/llm/LLMService.js";
+import RAGPipeline from "../../ai/rag/retrieval/RagPipeline.js";
 
-const SCHEMA = {
-  type: "object",
-  properties: {
-    summary: { type: "string" },
-    followUpQuestion: { type: "string" },
-    reasons: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          product: { type: "string" },
-          priority: { type: "number" },
-          reason: { type: "string" },
-        },
-        required: ["product", "priority", "reason"],
-      },
-    },
-  },
-  required: ["summary", "followUpQuestion", "reasons"],
-};
+import CatalogContextBuilder from "./builders/CatalogContextBuilder.js";
+import RecommendationFusion from "./recommendationranking/RecommendationFusion.js";
+
+const catalogService = new CatalogService();
+const ragPipeline = new RAGPipeline();
+const llmService = new LLMService();
+
+const contextBuilder = new CatalogContextBuilder();
+const fusion = new RecommendationFusion();
 
 export default class RecommendationEngine {
   async generate(state) {
-    console.time("RecommendationEngine");
+    const query = this.buildQuery(state);
+
+    /*
+     * =====================================================
+     * Parallel Retrieval
+     * =====================================================
+     */
+
+    const [catalogMatches, rag] = await Promise.all([
+      catalogService.searchProducts(query, 8),
+
+      ragPipeline.retrieve({
+        query,
+        conversation: state,
+        options: {
+          topK: 8,
+        },
+      }),
+    ]);
+
+    /*
+     * =====================================================
+     * Hybrid Fusion
+     * =====================================================
+     */
+
+    const fusedProducts = fusion.merge(catalogMatches, rag.documents ?? []);
+
+    const finalProducts = this.rankProducts(
+      fusedProducts,
+      state.recommendationContext,
+    ).slice(0, 5);
+
+    /*
+     * =====================================================
+     * No Products
+     * =====================================================
+     */
+
+    if (!finalProducts.length) {
+      return {
+        llm: {
+          summary: "Sorry, I couldn't find any matching products.",
+          followUpQuestion:
+            "Can you tell me more about what you're looking for?",
+          reasons: [],
+        },
+
+        catalogMatches: [],
+
+        context: rag.context ?? "",
+
+        documents: rag.documents ?? [],
+      };
+    }
+
+    /*
+     * =====================================================
+     * Context
+     * =====================================================
+     */
+
+    const catalogContext = contextBuilder.build(finalProducts);
+
+    /*
+     * =====================================================
+     * LLM
+     * =====================================================
+     */
+
+    const raw = await llmService.invoke({
+      systemPrompt: RecommendationPrompt({
+        message: query,
+        catalogContext,
+      }),
+
+      userMessage: query,
+
+      temperature: 0.2,
+    });
+
+    let llm;
 
     try {
-      /*
-       * =====================================================
-       * Decide Mode
-       * =====================================================
-       */
+      llm = JSON.parse(jsonrepair(raw));
+    } catch (err) {
+      console.error("Recommendation JSON Error:", err);
 
-      /*
-       * =====================================================
-       * Decide Mode
-       * =====================================================
-       */
+      llm = {
+        summary: "Here are the recommended products.",
 
-      let mode = "RECOMMENDATION";
-      let exactProduct = null;
+        followUpQuestion:
+          "Would you like more information about any of these products?",
 
-      const selectedProduct =
-        state.action?.payload?.product ??
-        state.selectedProduct ??
-        state.userMessage;
+        reasons: [],
+      };
+    }
 
-      console.log("Selected Product:", selectedProduct);
+    /*
+     * =====================================================
+     * Result
+     * =====================================================
+     */
 
-      if (state.capability === "product_details" && selectedProduct) {
-        exactProduct = await catalogService.getProductByAction(selectedProduct);
+    return {
+      llm,
 
-        console.log("Exact Product:", exactProduct?.metadata?.product);
+      catalogMatches: finalProducts,
 
-        if (exactProduct) {
-          mode = "PRODUCT_DETAILS";
+      context: rag.context ?? "",
+
+      documents: rag.documents ?? [],
+    };
+  }
+
+  rankProducts(products = [], ctx = {}) {
+    const businessType = (ctx.businessType ?? "").toLowerCase();
+
+    const goal = (ctx.businessGoal ?? "").toLowerCase();
+
+    const requirement = (
+      ctx.requirements ??
+      ctx.originalQuery ??
+      ""
+    ).toLowerCase();
+
+    const selectedCategories = new Set();
+
+    const ranked = products
+      .map((product) => {
+        const metadata = product.metadata ?? {};
+
+        const methods = metadata.retrievalMethods ?? [];
+
+        let score = metadata.hybridScore ?? metadata.score ?? 0;
+
+        /*
+         * Prefer Catalog over Semantic
+         */
+
+        if (methods.includes("CATALOG")) {
+          score += 7;
         }
-      }
 
-      /*
-       * =====================================================
-       * PRODUCT DETAILS
-       * Skip RAG
-       * Skip LLM
-       * =====================================================
-       */
+        if (methods.includes("SEMANTIC")) {
+          score += 3;
+        }
 
-      if (mode === "PRODUCT_DETAILS") {
+        const searchable = [
+          ...(metadata.businessTypes ?? []),
+          ...(metadata.industries ?? []),
+          ...(metadata.customerGoals ?? []),
+          ...(metadata.useCases ?? []),
+          ...(metadata.keywords ?? []),
+          ...(metadata.tags ?? []),
+          ...(metadata.synonyms ?? []),
+          product.pageContent ?? "",
+          product.content ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        businessType
+          .split(/\s+/)
+          .filter(Boolean)
+          .forEach((word) => {
+            if (searchable.includes(word)) {
+              score += 3;
+            }
+          });
+
+        goal
+          .split(/\s+/)
+          .filter(Boolean)
+          .forEach((word) => {
+            if (searchable.includes(word)) {
+              score += 3;
+            }
+          });
+
+        requirement
+          .split(/\s+/)
+          .filter((w) => w.length > 2)
+          .forEach((word) => {
+            if (searchable.includes(word)) {
+              score += 1;
+            }
+          });
+
         return {
-          mode,
-
-          context: "",
-
-          documents: [exactProduct],
-
-          catalogMatches: [
-            {
-              content: exactProduct.pageContent,
-              metadata: exactProduct.metadata,
-            },
-          ],
-
-          llm: {
-            summary: exactProduct.pageContent,
-
-            followUpQuestion: "Would you like to order this product?",
-
-            reasons: [
-              {
-                product: exactProduct.metadata.product,
-                priority: 1,
-                reason: exactProduct.pageContent,
-              },
-            ],
+          ...product,
+          metadata: {
+            ...metadata,
+            finalScore: score,
           },
         };
+      })
+      .sort((a, b) => b.metadata.finalScore - a.metadata.finalScore);
+
+    /*
+     * Category Diversity
+     */
+
+    const diversified = [];
+
+    for (const product of ranked) {
+      const category = product.metadata?.mainCategory ?? "Other";
+
+      if (selectedCategories.has(category)) {
+        continue;
       }
 
-      /*
-       * =====================================================
-       * Retrieve
-       * =====================================================
-       */
+      selectedCategories.add(category);
+      diversified.push(product);
 
-      console.time("Retrieve");
+      if (diversified.length === 5) {
+        break;
+      }
+    }
 
-      const ctx = state.recommendationContext ?? {};
+    /*
+     * Fill remaining slots
+     */
 
-      const originalQuery = ctx.originalQuery ?? state.userMessage;
+    if (diversified.length < 5) {
+      for (const product of ranked) {
+        if (diversified.includes(product)) {
+          continue;
+        }
 
-      let query = originalQuery;
+        diversified.push(product);
 
-      if (ctx.customerType === "BUSINESS") {
-        query = `
+        if (diversified.length === 5) {
+          break;
+        }
+      }
+    }
+
+    return diversified;
+  }
+
+  buildQuery(state) {
+    const ctx = state.recommendationContext ?? {};
+
+    /*
+     * =====================================================
+     * Direct Recommendation
+     * =====================================================
+     */
+
+    if (!ctx.customerType) {
+      return state.userMessage;
+    }
+
+    /*
+     * =====================================================
+     * Business
+     * =====================================================
+     */
+
+    if (ctx.customerType === "BUSINESS") {
+      return `
 Customer Type:
 Business
 
 Business Type:
-${ctx.businessType}
+${ctx.businessType ?? "Not specified"}
 
-Business Goal:
-${ctx.businessGoal}
+Business Objective:
+${ctx.businessGoal ?? "Not specified"}
+
+Customer Requirement:
+${ctx.requirements ?? "Not specified"}
 
 Original Request:
-${originalQuery}
+${ctx.originalQuery ?? state.userMessage}
 `;
-      }
+    }
 
-      if (ctx.customerType === "INDIVIDUAL") {
-        query = `
+    /*
+     * =====================================================
+     * Individual
+     * =====================================================
+     */
+
+    return `
 Customer Type:
 Individual
 
-Requirements:
-${ctx.requirements}
+Occasion:
+${ctx.occasion ?? "Not specified"}
+
+Requirement:
+${ctx.requirements ?? "Not specified"}
 
 Original Request:
-${originalQuery}
+${ctx.originalQuery ?? state.userMessage}
 `;
-      }
-
-      const retrieval = await ragPipeline.retrieve({
-        query,
-        conversation: state,
-      });
-
-      console.timeEnd("Retrieve");
-
-      /*
-       * =====================================================
-       * Remove Duplicate Products
-       * =====================================================
-       */
-
-      const products = [];
-      const seen = new Set();
-
-      for (const doc of retrieval.documents ?? []) {
-        const metadata = doc.metadata ?? {};
-
-        if (!metadata.product) continue;
-
-        const key = metadata.product.toLowerCase();
-
-        if (seen.has(key)) continue;
-
-        seen.add(key);
-
-        products.push({
-          content: doc.pageContent,
-          metadata,
-        });
-      }
-
-      const selectedProducts = products.slice(0, 5);
-
-      console.log(
-        "Catalog Matches:",
-        selectedProducts.map((p) => p.metadata.product),
-      );
-
-      /*
-       * =====================================================
-       * Catalog Context
-       * =====================================================
-       */
-
-      const catalogContext = selectedProducts
-        .map(
-          (item, index) => `
-Product ${index + 1}
-
-Name: ${item.metadata.product}
-Category: ${item.metadata.mainCategory}
-Sub Category: ${item.metadata.subCategory}
-
-Business Types:
-${(item.metadata.businessTypes ?? []).join(", ")}
-
-Industries:
-${(item.metadata.industries ?? []).join(", ")}
-
-Customer Goals:
-${(item.metadata.customerGoals ?? []).join(", ")}
-
-Use Cases:
-${(item.metadata.useCases ?? []).join(", ")}
-
-Related Products:
-${(item.metadata.relatedProducts ?? []).join(", ")}
-
-Frequently Bought Together:
-${(item.metadata.frequentlyBoughtWith ?? []).join(", ")}
-
-Description:
-${item.content}
-`,
-        )
-        .join("\n");
-
-      /*
-       * =====================================================
-       * LLM
-       * =====================================================
-       */
-
-      console.time("LLM");
-
-      // const llm = await llmService.invokeStructured({
-      //   schema: SCHEMA,
-
-      //   systemPrompt: RecommendationPrompt({
-      //     mode,
-      //     message: state.userMessage,
-      //     catalogContext,
-      //   }),
-
-      //   userMessage: state.userMessage,
-
-      //   temperature: 0,
-
-      //   topP: 0.8,
-      // });
-
-      const llm = await llmService.invoke({
-        systemPrompt: RecommendationPrompt({
-          mode,
-          message: query,
-          catalogContext,
-        }),
-        userMessage: query,
-        temperature: 0.5,
-      });
-      console.log("LLM Response:", llm);
-
-      console.timeEnd("LLM");
-
-      return {
-        mode,
-
-        context: retrieval.context,
-
-        documents: retrieval.documents,
-
-        catalogMatches: selectedProducts,
-
-        llm,
-      };
-    } finally {
-      console.timeEnd("RecommendationEngine");
-    }
   }
 }
