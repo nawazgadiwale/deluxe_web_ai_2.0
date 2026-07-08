@@ -23,15 +23,12 @@ export default class CatalogMapper {
     const products = await catalogService.searchProducts(text, limit);
 
     return products.map((product) => ({
+      ...product,
+
       product: product.metadata.product,
-
       mainCategory: product.metadata.mainCategory,
-
       subCategory: product.metadata.subCategory,
-
       description: product.content,
-
-      metadata: product.metadata,
     }));
   }
 

@@ -20,10 +20,14 @@ export default class ComparisonAgent {
      * =====================================================
      */
 
-    state.workflow = "COMPARISON";
-    state.currentStep = "SHOW_COMPARISON";
+    state.workflow = null;
+    state.currentStep = null;
     state.awaitingDecision = false;
 
+    state.comparison = {
+      products: result.products,
+      comparedAt: new Date(),
+    };
     /*
      * =====================================================
      * Save Response

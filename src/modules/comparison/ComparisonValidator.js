@@ -21,6 +21,24 @@ export default class ComparisonValidator {
         name: item.metadata.product,
 
         category: item.metadata.mainCategory,
+
+        subCategory: item.metadata.subCategory,
+
+        description: item.content ?? item.pageContent ?? "",
+
+        specifications: item.metadata.specifications ?? {},
+
+        materials: item.metadata.materials ?? [],
+
+        finishes: item.metadata.finishes ?? [],
+
+        sizes: item.metadata.availableSizes ?? item.metadata.sizes ?? [],
+
+        minimumOrder: item.metadata.minimumOrder,
+
+        leadTime: item.metadata.leadTime,
+
+        artworkRequired: item.metadata.artworkRequired ?? false,
       })),
 
       actions: [

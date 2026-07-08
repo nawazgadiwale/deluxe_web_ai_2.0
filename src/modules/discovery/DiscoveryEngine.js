@@ -4,10 +4,11 @@ const catalogMapper = new CatalogMapper();
 
 export default class DiscoveryEngine {
   async generate(state) {
-    const products = await catalogMapper.recommendProducts(
-      state.userMessage,
-      10,
-    );
+    console.log("Query:", state.userMessage);
+
+    const products = await catalogMapper.searchProducts(state.userMessage, 10);
+
+    console.log(products);
 
     return {
       products,

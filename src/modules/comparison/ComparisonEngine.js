@@ -11,14 +11,28 @@ export default class ComparisonEngine {
   async generate(state) {
     /*
      * =====================================================
-     * Products to Compare
+     * Resolve Products
      * =====================================================
      */
 
-    const productNames = state.action?.payload?.products ?? [];
+    let productNames = state.action?.payload?.products ?? [];
+
+    /*
+     * Natural language compare
+     */
 
     if (productNames.length < 2) {
-      return null;
+      productNames = [];
+
+      const text = state.userMessage ?? "";
+
+      const products = await catalogService.searchProducts(text, 5);
+
+      for (const product of products) {
+        productNames.push(product.metadata.product);
+      }
+
+      productNames = [...new Set(productNames)];
     }
 
     /*
@@ -62,7 +76,7 @@ export default class ComparisonEngine {
       userMessage: productNames.join(" vs "),
       temperature: 0.3,
     });
-    
+
     // console.log(llm)
     /*
      * =====================================================

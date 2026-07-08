@@ -2,12 +2,13 @@ import LLMService from "../../ai/llm/LLMService.js";
 import RAGPipeline from "../../ai/rag/retrieval/RagPipeline.js";
 import CatalogService from "../catalog/CatalogService.js";
 import ProductDetailsPrompt from "../../ai/llm/prompts/ProductDetailsPrompt.js";
-
+import CatalogMapper from "../../modules/catalog/CatalogMapper.js";
 import ProductDetailsContextBuilder from "./builders/ProductDetailsContextBuilder.js";
 
 const llmService = new LLMService();
 const ragPipeline = new RAGPipeline();
 const catalogService = new CatalogService();
+const catalogMapper = new CatalogMapper();
 
 const contextBuilder = new ProductDetailsContextBuilder();
 
@@ -15,26 +16,20 @@ export default class ProductDetailsEngine {
   async generate(state) {
     /*
      * =====================================================
-     * Product
+     * Resolve Product
      * =====================================================
      */
+    let product = null;
 
-    const productName =
-      state.action?.payload?.product ??
-      state.selectedProduct ??
-      state.userMessage;
-
-    if (!productName) {
-      throw new Error("Product name not found.");
+    if (state.action?.payload?.product) {
+      product = await catalogService.getProductByAction(
+        state.action.payload.product,
+      );
     }
 
-    /*
-     * =====================================================
-     * Catalog Lookup
-     * =====================================================
-     */
-
-    const product = await catalogService.getProductByAction(productName);
+    if (!product) {
+      product = await catalogMapper.findProduct(productName);
+    }
 
     if (!product) {
       return null;

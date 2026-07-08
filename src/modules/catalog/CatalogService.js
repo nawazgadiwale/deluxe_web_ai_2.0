@@ -34,6 +34,9 @@ export default class CatalogService {
     const json = JSON.parse(file);
 
     this.catalog = json.documents ?? [];
+    console.log("Catalog Size:", this.catalog.length);
+
+    console.log("First Product:", this.catalog[0]?.metadata?.product);
 
     this.buildIndexes();
 
@@ -51,7 +54,7 @@ export default class CatalogService {
       includeScore: true,
       shouldSort: true,
       ignoreLocation: true,
-      threshold: 0.3,
+      threshold: 0.5,
       minMatchCharLength: 2,
 
       keys: [
@@ -110,7 +113,6 @@ export default class CatalogService {
    * Never performs fuzzy search.
    * =====================================================
    */
-
   async getProductByAction(productName) {
     await this.load();
 
@@ -123,7 +125,13 @@ export default class CatalogService {
     for (const product of this.catalog) {
       const metadata = product.metadata ?? {};
 
-      if (this.normalize(metadata.product) === search) {
+      const title = this.normalize(metadata.product ?? "");
+
+      if (title === search) {
+        return product;
+      }
+
+      if (title.includes(search) || search.includes(title)) {
         return product;
       }
 
@@ -212,9 +220,24 @@ export default class CatalogService {
       return [];
     }
 
-    return this.productFuse
-      .search(query)
-      .filter((r) => r.score <= 0.4)
+    query = this.normalize(query);
+
+    query = query
+      .replace(/\bi need\b/g, "")
+      .replace(/\bi want\b/g, "")
+      .replace(/\bshow me\b/g, "")
+      .replace(/\bgive me\b/g, "")
+      .replace(/\blooking for\b/g, "")
+      .replace(/\bplease\b/g, "")
+      .trim();
+
+    const results = this.productFuse.search(query);
+
+    console.log("Search:", query);
+    console.log(results.slice(0, 5));
+
+    return results
+      .filter((r) => r.score <= 0.55)
       .sort((a, b) => a.score - b.score)
       .slice(0, limit)
       .map((r) => ({
@@ -222,7 +245,6 @@ export default class CatalogService {
 
         metadata: {
           ...r.item.metadata,
-
           score: 1 - r.score,
         },
       }));

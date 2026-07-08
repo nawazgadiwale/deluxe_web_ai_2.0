@@ -1,28 +1,30 @@
 export default class DiscoveryValidator {
   validate(result = {}) {
+    const products = result.products ?? [];
+
+    console.log(products)
+
     return {
       summary:
-        result.products.length > 0
-          ? `I found ${result.products.length} matching products.`
+        products.length > 0
+          ? `I found ${products.length} matching products.`
           : "I couldn't find any matching products.",
 
       followUpQuestion:
-        result.products.length > 0
-          ? "Select a product to view more details."
-          : "",
+        products.length > 0 ? "Select a product to view more details." : "",
 
-      products: result.products.map((item) => ({
+      products: products.map((item) => ({
         product: item.product,
 
         mainCategory: item.mainCategory,
 
         subCategory: item.subCategory,
 
-        description: item.description,
+        description: item.description ?? "",
 
-        relatedProducts: item.metadata.relatedProducts ?? [],
+        relatedProducts: item.metadata?.relatedProducts ?? [],
 
-        frequentlyBoughtWith: item.metadata.frequentlyBoughtWith ?? [],
+        frequentlyBoughtWith: item.metadata?.frequentlyBoughtWith ?? [],
 
         actions: [
           {
