@@ -8,7 +8,7 @@ const customerSchema = new mongoose.Schema(
       trim: true,
     },
 
-    mobile: {
+    phone: {
       type: String,
       default: null,
       trim: true,

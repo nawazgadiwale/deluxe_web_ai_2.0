@@ -5,30 +5,11 @@ export default class DiscoveryContextBuilder {
         const metadata = item.metadata ?? {};
 
         return `
-Product ${index + 1}
-
-Name
-${metadata.product}
-
-Category
-${metadata.mainCategory}
-
-Sub Category
-${metadata.subCategory}
-
-Business Types
-${(metadata.businessTypes ?? []).join(", ")}
-
-Industries
-${(metadata.industries ?? []).join(", ")}
-
-Use Cases
-${(metadata.useCases ?? []).join(", ")}
-
-Description
-${item.content}
+${index + 1}. ${metadata.product}
+${metadata.mainCategory}/${metadata.subCategory}
+${metadata.shortDescription ?? item.content?.slice(0, 120)}
 `;
       })
-      .join("\n---------------------------------------\n");
+      .join("\n");
   }
 }

@@ -34,9 +34,9 @@ export default class CatalogService {
     const json = JSON.parse(file);
 
     this.catalog = json.documents ?? [];
-    console.log("Catalog Size:", this.catalog.length);
+    // console.log("Catalog Size:", this.catalog.length);
 
-    console.log("First Product:", this.catalog[0]?.metadata?.product);
+    // console.log("First Product:", this.catalog[0]?.metadata?.product);
 
     this.buildIndexes();
 
@@ -233,8 +233,8 @@ export default class CatalogService {
 
     const results = this.productFuse.search(query);
 
-    console.log("Search:", query);
-    console.log(results.slice(0, 5));
+    // console.log("Search:", query);
+    // console.log(results.slice(0, 5));
 
     return results
       .filter((r) => r.score <= 0.55)
@@ -287,7 +287,40 @@ export default class CatalogService {
    * Helpers
    * =====================================================
    */
+  async extractProducts(text) {
+    await this.load();
 
+    if (!text?.trim()) {
+      return [];
+    }
+
+    const lower = this.normalize(text);
+
+    const matches = [];
+
+    for (const product of this.catalog) {
+      const metadata = product.metadata ?? {};
+
+      const productName = this.normalize(metadata.product ?? "");
+
+      if (lower.includes(productName)) {
+        matches.push(metadata.product);
+        continue;
+      }
+
+      for (const synonym of metadata.synonyms ?? []) {
+        if (lower.includes(this.normalize(synonym))) {
+          matches.push(metadata.product);
+          break;
+        }
+      }
+    }
+
+    return [...new Set(matches)];
+  }
+
+
+  
   async getProduct(name) {
     return this.findProductByName(name);
   }

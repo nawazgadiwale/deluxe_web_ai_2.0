@@ -25,7 +25,34 @@ export default class ComparisonAgent {
     state.awaitingDecision = false;
 
     state.comparison = {
+      summary: result.summary,
+
+      comparison: result.comparison,
+
+      recommendation: result.recommendation,
+
+      followUpQuestion: result.followUpQuestion,
+
       products: result.products,
+
+      query: result.query,
+
+      comparedAt: new Date(),
+    };
+
+    /*
+     * =====================================================
+     * Comparison Conversation Context
+     * =====================================================
+     */
+
+    state.comparisonContext = {
+      active: true,
+
+      products: result.products,
+
+      query: result.query,
+
       comparedAt: new Date(),
     };
     /*
@@ -35,6 +62,13 @@ export default class ComparisonAgent {
      */
 
     state.response = responseBuilder.comparison(result);
+
+    if (state.workflowStack?.length) {
+      responseBuilder.appendResumePrompt(
+        state.response,
+        state.workflowStack[state.workflowStack.length - 1],
+      );
+    }
 
     /*
      * =====================================================

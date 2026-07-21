@@ -37,8 +37,24 @@ export default class RAGPipeline {
       filter: filters,
     });
 
+    // console.log("========== RAG RETRIEVAL ==========");
+    // console.log("Query:", enriched.enrichedQuery);
+    // console.log(
+    //   "Documents:",
+    //   documents.map((d) => ({
+    //     score: d.score,
+    //     source: d.metadata?.source,
+    //     text: d.pageContent?.substring(0, 200),
+    //   })),
+    // );
+    // console.log("==================================");
+
     // Build context for LLM
     const context = contextBuilder.build(documents);
+
+    // console.log("========== CONTEXT ==========");
+    // console.log(context);
+    // console.log("=============================");
 
     return {
       originalQuery: query,

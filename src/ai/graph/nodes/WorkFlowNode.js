@@ -1,34 +1,71 @@
 import WorkflowPlanner from "../../../modules/workflow/WorkflowPlanner.js";
-import WorkflowState from "../../../modules/workflow/WorkflowState.js";
 
 const planner = new WorkflowPlanner();
-const workflowState = new WorkflowState();
 
 export default class WorkflowNode {
   async execute(state) {
-    if (workflowState.shouldClear(state)) {
-      workflowState.clear(state);
+    console.log("WorkflowNode");
+
+    console.log({
+      capability: state.capability,
+      workflow: state.workflow,
+      step: state.currentStep,
+    });
+
+    /*
+     * =====================================================
+     * Continue Existing Workflow
+     * =====================================================
+     */
+
+    if (state.routing?.source === "WORKFLOW" && state.executionPlan?.length) {
+      return state;
     }
+
+    /*
+     * =====================================================
+     * Resume / Cancel
+     * =====================================================
+     */
+
+    if (
+      state.capability === "resume_workflow" ||
+      state.capability === "cancel_workflow"
+    ) {
+      return state;
+    }
+
+    /*
+     * =====================================================
+     * Resolve Capability
+     * =====================================================
+     */
 
     const capability = state.capability ?? state.capabilities?.[0];
 
-    // console.log("Workflow :", state.workflow);
-    // console.log("Capability :", capability);
-
     const plan = planner.plan(capability);
+
+    /*
+     * =====================================================
+     * Workflow Not Found
+     * =====================================================
+     */
 
     if (!plan) {
       state.response = {
-        type: "assistant",
-        data: {
-          message:
-            state.routing?.assistantQuestion ??
-            "Could you tell me a little more about what you're looking for?",
-        },
+        success: false,
+        type: "error",
+        message: `Workflow not found for '${capability}'.`,
       };
 
       return state;
     }
+
+    /*
+     * =====================================================
+     * Build Execution Plan
+     * =====================================================
+     */
 
     state.executionPlan = plan;
     state.currentExecutionIndex = 0;

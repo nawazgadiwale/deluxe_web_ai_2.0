@@ -27,6 +27,24 @@ const ConversationState = Annotation.Root({
     default: () => [],
   }),
 
+  /*
+   * =====================================================
+   * Order
+   * =====================================================
+   */
+
+  order: Annotation({
+    default: () => null,
+  }),
+
+  orderContext: Annotation({
+    default: () => null,
+  }),
+
+  currentField: Annotation({
+    default: () => null,
+  }),
+
   // Conversation history
   history: Annotation({
     reducer: (current, update) => [...current, ...update],
@@ -122,7 +140,24 @@ const ConversationState = Annotation.Root({
         dirty: false,
         updatedAt: null,
       },
+
+      order: {
+        dirty: false,
+        updatedAt: null,
+      },
     }),
+  }),
+
+  routing: Annotation({
+    default: () => null,
+  }),
+
+  currentField: Annotation({
+    default: () => null,
+  }),
+
+  workflowStack: Annotation({
+    default: () => [],
   }),
 
   currentExecutionIndex: Annotation({
@@ -163,7 +198,6 @@ const ConversationState = Annotation.Root({
   comparisonProducts: Annotation({
     default: () => [],
   }),
-
 });
 
 export default ConversationState;

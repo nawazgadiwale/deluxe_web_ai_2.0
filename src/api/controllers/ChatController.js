@@ -39,6 +39,9 @@ export default class ChatController {
 
       const conversation = await chatApplication.getConversation(sessionId);
 
+      // console.log("Session ID:", sessionId);
+      // console.log("Conversation loaded:", conversation);
+
       if (!conversation) {
         return res.status(404).json({
           success: false,

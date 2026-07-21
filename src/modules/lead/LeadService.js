@@ -1,18 +1,66 @@
 import LeadManager from "./LeadManager.js";
 import LeadExtractor from "./LeadExtractor.js";
+import LeadIntentResolver from "./IntentTypes/LeadIntentResolver.js";
 
 const extractor = new LeadExtractor();
 const manager = new LeadManager();
+const intentResolver = new LeadIntentResolver();
 
 export default class LeadService {
   async process(state) {
+    let lead = state.leadRequest ?? manager.createLead();
+
     /*
      * =====================================================
-     * Load Existing Lead
+     * First entry into Lead workflow
      * =====================================================
      */
 
-    let lead = state.leadRequest ?? manager.createLead();
+    if (!state.leadRequest && !state.currentStep) {
+      /*
+       * =====================================================
+       * Resolve Lead Intent
+       * =====================================================
+       */
+
+      const intent = await intentResolver.resolve(state.userMessage);
+
+      manager.updateType(lead, intent.type);
+
+      /*
+       * =====================================================
+       * Metadata
+       * =====================================================
+       */
+
+      state.metadata = {
+        ...(state.metadata ?? {}),
+        leadType: intent.type,
+        leadPriority: intent.priority,
+      };
+
+      /*
+       * =====================================================
+       * Status
+       * =====================================================
+       */
+
+      manager.updateStatus(lead, "COLLECTING_CUSTOMER");
+
+      const nextQuestion = manager.getNextQuestion(lead);
+
+      return {
+        status: "COLLECTING_CUSTOMER",
+
+        leadRequest: lead,
+
+        awaitingDecision: false,
+
+        currentStep: nextQuestion.step,
+
+        response: nextQuestion,
+      };
+    }
 
     /*
      * =====================================================
@@ -37,16 +85,18 @@ export default class LeadService {
      */
 
     if (!lead.type) {
-      manager.updateType(lead, state.metadata?.leadType ?? "GENERAL_ENQUIRY");
+      const intent = await intentResolver.resolve(state.userMessage);
+
+      manager.updateType(lead, intent.type);
     }
 
     /*
      * =====================================================
-     * Validate Mobile
+     * Validate Phone
      * =====================================================
      */
 
-    if (lead.customer.mobile && !manager.isMobileValid(lead.customer.mobile)) {
+    if (lead.customer.phone && !manager.isPhoneValid(lead.customer.phone)) {
       return {
         status: "COLLECTING_CUSTOMER",
 
@@ -54,15 +104,15 @@ export default class LeadService {
 
         awaitingDecision: false,
 
-        currentStep: "ASK_MOBILE",
+        currentStep: "ASK_PHONE",
 
         response: {
-          step: "ASK_MOBILE",
+          step: "ASK_PHONE",
 
-          field: "mobile",
+          field: "phone",
 
           message:
-            "That doesn't appear to be a valid phone number. Please enter your mobile number again.",
+            "That doesn't appear to be a valid phone number. Please enter your phone number again.",
         },
       };
     }

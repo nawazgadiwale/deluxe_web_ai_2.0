@@ -6,6 +6,120 @@
         "mainCategory": "Print & Marketing",
         "subCategory": "Stationery & Corporate Identity",
         "product": "Business Cards",
+"requiredFields": [
+  {
+    "name": "Card Type",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Standard Pack",
+      "Executive",
+      "Bristol Pack",
+      "Pearl White",
+      "PVC",
+      "Kraft Pack",
+      "Classic - Conqueror",
+      "Classic - Ice Gold",
+      "Velvet Pack",
+      "Textured",
+      "Translucent Pack",
+      "3D Spot UV",
+      "3D Foil",
+      "3D Spot UV & 3D Foil"
+    ]
+  },
+  {
+    "name": "Number of Names",
+    "type": "number",
+    "required": true,
+    "default": 1
+  },
+  {
+    "name": "Corner Style",
+    "type": "select",
+    "required": false,
+    "options": [
+      "Standard",
+      "Rounded"
+    ]
+  },
+  {
+    "name": "Foiling",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "name": "Colored Edge",
+    "type": "boolean",
+    "required": false
+  }
+],
+"variants": [
+  {
+    "name": "Standard Pack",
+    "startingPrice": 60
+  },
+  {
+    "name": "Bristol Pack",
+    "startingPrice": 75
+  },
+  {
+    "name": "Pearl White",
+    "startingPrice": 90
+  },
+  {
+    "name": "PVC",
+    "startingPrice": 90
+  },
+  {
+    "name": "Kraft Pack",
+    "startingPrice": 95
+  },
+  {
+    "name": "Executive",
+    "startingPrice": 100,
+    "features": [
+      "400 GSM pristine white card",
+      "Matt coating on both sides",
+      "Smooth touch",
+      "Elegant look"
+    ]
+  },
+  {
+    "name": "Classic - Conqueror",
+    "startingPrice": 130
+  },
+  {
+    "name": "Classic - Ice Gold",
+    "startingPrice": 130
+  },
+  {
+    "name": "Velvet Pack",
+    "startingPrice": 130
+  },
+  {
+    "name": "Textured",
+    "startingPrice": 225
+  },
+  {
+    "name": "Translucent Pack",
+    "startingPrice": 250
+  },
+  {
+    "name": "3D Spot UV",
+    "startingPrice": 320
+  },
+  {
+    "name": "3D Foil",
+    "startingPrice": 395
+  },
+  {
+    "name": "3D Spot UV & 3D Foil",
+    "startingPrice": 570
+  }
+],
+
+
         "keywords": [
           "business cards",
           "visiting card",

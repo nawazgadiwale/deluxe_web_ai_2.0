@@ -5,9 +5,11 @@ import CatalogService from "../catalog/CatalogService.js";
 import RecommendationPrompt from "../../ai/llm/prompts/RecommendationPrompt.js";
 import LLMService from "../../ai/llm/LLMService.js";
 import RAGPipeline from "../../ai/rag/retrieval/RagPipeline.js";
+import RecommendationConversationPrompt from "../../ai/llm/prompts/RecommendationConversationPrompt.js";
 
 import CatalogContextBuilder from "./builders/CatalogContextBuilder.js";
 import RecommendationFusion from "./recommendationranking/RecommendationFusion.js";
+import BUSINESS_KNOWLEDGE from "./knowledge/BusinessKnowledge.js";
 
 const catalogService = new CatalogService();
 const ragPipeline = new RAGPipeline();
@@ -17,8 +19,119 @@ const contextBuilder = new CatalogContextBuilder();
 const fusion = new RecommendationFusion();
 
 export default class RecommendationEngine {
+  async execute(state) {
+    if (this.isConversation(state)) {
+      return this.continueConversation(state);
+    }
+
+    return this.generate(state);
+  }
+
+  isConversation(state) {
+    const ctx = state.recommendationContext ?? {};
+
+    // No recommendation session
+    if (!ctx.active) {
+      return false;
+    }
+
+    // Another workflow owns the conversation
+    if (state.workflow && state.workflow !== "RECOMMENDATION") {
+      return false;
+    }
+
+    // Still collecting recommendation inputs.
+    // We should generate recommendations next,
+    // not answer conversationally.
+    if (state.awaitingDecision) {
+      return false;
+    }
+
+    // Recommendation conversation starts only
+    // AFTER products have already been generated.
+    return (ctx.catalogProducts?.length ?? 0) > 0;
+  }
+
+  async continueConversation(state) {
+    const ctx = state.recommendationContext ?? {};
+
+    const rag = await ragPipeline.retrieve({
+      query: state.userMessage,
+      conversation: state,
+      options: {
+        topK: 5,
+      },
+    });
+
+    const catalogContext = contextBuilder.build(ctx.catalogProducts ?? []);
+
+    const prompt = RecommendationConversationPrompt({
+      context: {
+        customerType: ctx.customerType,
+
+        businessType: ctx.businessType,
+
+        businessGoals: ctx.businessGoals ?? [],
+
+        requirements: ctx.requirements ?? [],
+
+        targetAudience: ctx.targetAudience ?? [],
+
+        campaigns: ctx.campaigns ?? [],
+
+        constraints: ctx.constraints ?? [],
+
+        ragContext: rag.context,
+      },
+      catalogContext,
+    });
+
+    const answer = await llmService.invoke({
+      systemPrompt: prompt,
+      userMessage: state.userMessage,
+      temperature: 0.2,
+    });
+
+    return {
+      llm: {
+        summary: answer,
+        followUpQuestion:
+          "Would you like more details about any of these products?",
+        reasons: [],
+      },
+
+      catalogMatches: ctx.catalogProducts ?? [],
+
+      context: rag.context,
+
+      documents: rag.documents,
+    };
+  }
+
+  // business knowledge
+  buildRecommendationProfile(ctx = {}) {
+    const businessType = (ctx.businessType ?? "").trim().toLowerCase();
+
+    const business =
+      Object.entries(BUSINESS_KNOWLEDGE).find(
+        ([key]) => key.toLowerCase() === businessType,
+      )?.[1] ?? BUSINESS_KNOWLEDGE.Other;
+
+    return {
+      business,
+      goals: business.goals ?? [],
+      challenges: business.challenges ?? [],
+      salesStrategy: business.salesStrategy,
+      upsellStrategy: business.upsellStrategy,
+    };
+  }
+
   async generate(state) {
     const query = this.buildQuery(state);
+
+    const profile = this.buildRecommendationProfile(
+      state.recommendationContext,
+    );
 
     /*
      * =====================================================
@@ -48,6 +161,7 @@ export default class RecommendationEngine {
 
     const finalProducts = this.rankProducts(
       fusedProducts,
+      profile,
       state.recommendationContext,
     ).slice(0, 5);
 
@@ -92,6 +206,7 @@ export default class RecommendationEngine {
       systemPrompt: RecommendationPrompt({
         message: query,
         catalogContext,
+        profile,
       }),
 
       userMessage: query,
@@ -133,16 +248,20 @@ export default class RecommendationEngine {
     };
   }
 
-  rankProducts(products = [], ctx = {}) {
+  rankProducts(products = [], profile = {}, ctx = {}) {
     const businessType = (ctx.businessType ?? "").toLowerCase();
 
-    const goal = (ctx.businessGoal ?? "").toLowerCase();
+    const goals = (ctx.businessGoals ?? []).map((g) => g.toLowerCase());
 
-    const requirement = (
-      ctx.requirements ??
-      ctx.originalQuery ??
-      ""
-    ).toLowerCase();
+    const requirements = (
+      ctx.requirements?.length ? ctx.requirements : [ctx.originalQuery ?? ""]
+    ).map((r) => r.toLowerCase());
+
+    const targetAudience = (ctx.targetAudience ?? []).map((t) =>
+      t.toLowerCase(),
+    );
+
+    const campaigns = (ctx.campaigns ?? []).map((c) => c.toLowerCase());
 
     const selectedCategories = new Set();
 
@@ -180,6 +299,44 @@ export default class RecommendationEngine {
           .join(" ")
           .toLowerCase();
 
+        /*
+         * =====================================================
+         * Business Goal Match
+         * =====================================================
+         */
+
+        for (const goal of profile.goals ?? []) {
+          if (this.matchesConcept(searchable, goal)) {
+            score += 4;
+          }
+        }
+
+        /*
+         * =====================================================
+         * Business Challenge Match
+         * =====================================================
+         */
+
+        for (const challenge of profile.challenges ?? []) {
+          if (searchable.includes(challenge.name.toLowerCase())) {
+            score += 2;
+          }
+        }
+
+        /*
+         * =====================================================
+         * Sales Strategy Match
+         * =====================================================
+         */
+
+        const preferredGoals = profile.salesStrategy?.preferredGoals ?? [];
+
+        for (const goal of preferredGoals) {
+          if (searchable.includes(goal.name.toLowerCase())) {
+            score += 3;
+          }
+        }
+
         businessType
           .split(/\s+/)
           .filter(Boolean)
@@ -189,23 +346,49 @@ export default class RecommendationEngine {
             }
           });
 
-        goal
-          .split(/\s+/)
-          .filter(Boolean)
-          .forEach((word) => {
-            if (searchable.includes(word)) {
-              score += 3;
-            }
-          });
+        for (const goal of goals) {
+          goal
+            .split(/\s+/)
+            .filter(Boolean)
+            .forEach((word) => {
+              if (searchable.includes(word)) {
+                score += 3;
+              }
+            });
+        }
 
-        requirement
-          .split(/\s+/)
-          .filter((w) => w.length > 2)
-          .forEach((word) => {
-            if (searchable.includes(word)) {
-              score += 1;
-            }
-          });
+        for (const requirement of requirements) {
+          requirement
+            .split(/\s+/)
+            .filter((w) => w.length > 2)
+            .forEach((word) => {
+              if (searchable.includes(word)) {
+                score += 1;
+              }
+            });
+        }
+
+        for (const audience of targetAudience) {
+          audience
+            .split(/\s+/)
+            .filter((w) => w.length > 2)
+            .forEach((word) => {
+              if (searchable.includes(word)) {
+                score += 2;
+              }
+            });
+        }
+
+        for (const campaign of campaigns) {
+          campaign
+            .split(/\s+/)
+            .filter((w) => w.length > 2)
+            .forEach((word) => {
+              if (searchable.includes(word)) {
+                score += 2;
+              }
+            });
+        }
 
         return {
           ...product,
@@ -286,11 +469,20 @@ Business
 Business Type:
 ${ctx.businessType ?? "Not specified"}
 
-Business Objective:
-${ctx.businessGoal ?? "Not specified"}
+Business Objectives:
+${ctx.businessGoals?.length ? ctx.businessGoals.join(", ") : "Not specified"}
 
-Customer Requirement:
-${ctx.requirements ?? "Not specified"}
+Customer Requirements:
+${ctx.requirements?.length ? ctx.requirements.join("\n") : "Not specified"}
+
+Target Audience:
+${ctx.targetAudience?.length ? ctx.targetAudience.join(", ") : "Not specified"}
+
+Campaigns:
+${ctx.campaigns?.length ? ctx.campaigns.join(", ") : "Not specified"}
+
+Constraints:
+${ctx.constraints?.length ? ctx.constraints.join(", ") : "Not specified"}
 
 Original Request:
 ${ctx.originalQuery ?? state.userMessage}
@@ -312,9 +504,19 @@ ${ctx.occasion ?? "Not specified"}
 
 Requirement:
 ${ctx.requirements ?? "Not specified"}
-
-Original Request:
-${ctx.originalQuery ?? state.userMessage}
 `;
+  }
+
+  // helper
+  matchesConcept(searchable, concept = {}) {
+    const values = [
+      concept.name,
+      ...(concept.aliases ?? []),
+      ...(concept.keywords ?? []),
+    ]
+      .filter(Boolean)
+      .map((v) => v.toLowerCase());
+
+    return values.some((value) => searchable.includes(value));
   }
 }

@@ -4,19 +4,17 @@ export default class CatalogContextBuilder {
       .map((item, index) => {
         const metadata = item.metadata ?? {};
 
-        const description = (item.pageContent ?? item.content ?? "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 120);
+        const description =
+          metadata.shortDescription ??
+          metadata.description ??
+          (item.pageContent ?? item.content ?? "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120);
 
         return `
-Product ${index + 1}
-
-Name: ${metadata.product}
-Category: ${metadata.mainCategory}
-Business: ${(metadata.businessTypes ?? []).join(", ")}
-Goal: ${(metadata.customerGoals ?? []).join(", ")}
-Use Cases: ${(metadata.useCases ?? []).join(", ")}
+${index + 1}. ${metadata.product}
+Category: ${metadata.mainCategory}/${metadata.subCategory}
 Description: ${description}
 `;
       })

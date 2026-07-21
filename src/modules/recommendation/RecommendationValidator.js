@@ -54,7 +54,7 @@ export default class RecommendationValidator {
           {
             id: "SHOW_PRODUCT_DETAILS",
 
-            label: "Show More",
+            label: "View details",
 
             payload: {
               product: productName,

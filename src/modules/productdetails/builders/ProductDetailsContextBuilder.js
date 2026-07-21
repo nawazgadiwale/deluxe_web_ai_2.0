@@ -1,53 +1,41 @@
 export default class ProductDetailsContextBuilder {
   build(product) {
-    if (!product) {
-      return "";
-    }
+    if (!product) return "";
 
     const metadata = product.metadata ?? {};
 
-    return `
-Product
-${metadata.product}
+    const sections = [
+      `Product: ${metadata.product}`,
+      `Category: ${metadata.mainCategory}/${metadata.subCategory}`,
+    ];
 
-Category
-${metadata.mainCategory}
+    if (metadata.description || product.content || product.pageContent) {
+      sections.push(
+        `Description:\n${metadata.description ?? product.content ?? product.pageContent}`,
+      );
+    }
 
-Sub Category
-${metadata.subCategory}
+    if (metadata.features?.length) {
+      sections.push(`Features:\n${metadata.features.join(", ")}`);
+    }
 
-Description
-${product.content ?? product.pageContent ?? ""}
+    if (metadata.specifications) {
+      const specs = Object.entries(metadata.specifications)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n");
 
-Business Types
-${(metadata.businessTypes ?? []).join(", ")}
+      sections.push(`Specifications:\n${specs}`);
+    }
 
-Industries
-${(metadata.industries ?? []).join(", ")}
+    if (metadata.materials?.length)
+      sections.push(`Materials: ${metadata.materials.join(", ")}`);
 
-Customer Goals
-${(metadata.customerGoals ?? []).join(", ")}
+    if (metadata.availableSizes?.length)
+      sections.push(`Sizes: ${metadata.availableSizes.join(", ")}`);
 
-Use Cases
-${(metadata.useCases ?? []).join(", ")}
+    if (metadata.finishes?.length)
+      sections.push(`Finishes: ${metadata.finishes.join(", ")}`);
 
-Specifications
-${JSON.stringify(metadata.specifications ?? {}, null, 2)}
-
-Available Sizes
-${(metadata.availableSizes ?? []).join(", ")}
-
-Materials
-${(metadata.materials ?? []).join(", ")}
-
-Finishes
-${(metadata.finishes ?? []).join(", ")}
-
-Related Products
-${(metadata.relatedProducts ?? []).join(", ")}
-
-Frequently Bought Together
-${(metadata.frequentlyBoughtWith ?? []).join(", ")}
-`;
+    return sections.join("\n\n");
   }
 }

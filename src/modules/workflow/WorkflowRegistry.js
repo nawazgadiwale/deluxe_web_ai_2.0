@@ -48,4 +48,17 @@ export default {
     persistent: true,
     workflow: "LEAD",
   },
+
+  out_of_scope: {
+    capability: "out_of_scope",
+    node: "OutOfScopeNode",
+    persistent: false,
+  },
+
+  order: {
+    capability: "order",
+    node: "OrderNode",
+    persistent: true,
+    workflow: "ORDER",
+  },
 };

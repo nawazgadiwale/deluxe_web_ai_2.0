@@ -6,9 +6,9 @@ export default class WorkflowNode {
 
     const capability = capabilities[0] ?? "recommendation";
 
-    console.log("Workflow :", state.workflow);
-    console.log("Current Step :", state.currentStep);
-    console.log("Capability :", capability);
+    // console.log("Workflow :", state.workflow);
+    // console.log("Current Step :", state.currentStep);
+    // console.log("Capability :", capability);
 
     /*
      * =====================================================
@@ -135,10 +135,10 @@ export default class WorkflowNode {
       },
     ];
 
-    state.currentExecutionIndex = 0;
-    console.log("====== RESPONSE NODE ======");
-    console.log(state.persistence);
-    console.log("===========================");
+    // state.currentExecutionIndex = 0;
+    // console.log("====== RESPONSE NODE ======");
+    // console.log(state.persistence);
+    // console.log("===========================");
 
     return state;
   }

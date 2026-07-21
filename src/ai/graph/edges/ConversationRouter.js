@@ -1,19 +1,33 @@
 export default class ConversationRouter {
   /*
    * =====================================================
+   * Current Execution
+   * =====================================================
+   */
+
+  current(state) {
+    const plan = state.executionPlan ?? [];
+    const index = state.currentExecutionIndex ?? 0;
+
+    if (!plan.length) {
+      return null;
+    }
+
+    if (index < 0 || index >= plan.length) {
+      return null;
+    }
+
+    return plan[index];
+  }
+
+  /*
+   * =====================================================
    * First Node
    * =====================================================
    */
 
   route(state) {
-    const executionPlan = state.executionPlan ?? [];
-    const index = state.currentExecutionIndex ?? 0;
-
-    if (!executionPlan.length || index >= executionPlan.length) {
-      return "ResponseNode";
-    }
-
-    return executionPlan[index].node;
+    return this.current(state)?.node ?? "ResponseNode";
   }
 
   /*
@@ -25,13 +39,27 @@ export default class ConversationRouter {
   continue(state) {
     state.currentExecutionIndex = (state.currentExecutionIndex ?? 0) + 1;
 
-    const executionPlan = state.executionPlan ?? [];
+    return this.route(state);
+  }
 
-    if (state.currentExecutionIndex >= executionPlan.length) {
-      return "ResponseNode";
-    }
+  /*
+   * =====================================================
+   * Helpers
+   * =====================================================
+   */
 
-    return executionPlan[state.currentExecutionIndex].node;
+  hasNext(state) {
+    const plan = state.executionPlan ?? [];
+
+    return (state.currentExecutionIndex ?? 0) + 1 < plan.length;
+  }
+
+  currentCapability(state) {
+    return this.current(state)?.capability ?? null;
+  }
+
+  currentWorkflow(state) {
+    return this.current(state)?.workflow ?? null;
   }
 
   /*
@@ -43,6 +71,9 @@ export default class ConversationRouter {
   reset(state) {
     state.executionPlan = [];
     state.currentExecutionIndex = 0;
+
+    // console.log("Execution Plan");
+    // console.dir(state.executionPlan, { depth: null });
 
     return "ResponseNode";
   }

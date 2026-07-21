@@ -1,67 +1,50 @@
 export default class ComparisonContextBuilder {
-  build(products = []) {
-    if (!products.length) {
-      return "";
-    }
+  build({ products = [], query = {} }) {
+    if (!products.length) return "";
 
-    return products
-      .map((item, index) => {
-        const metadata = item.metadata ?? {};
+    const sections = [
+      `
+Customer
+--------
+Type: ${query.customerType || "N/A"}
+Business: ${query.businessType || "N/A"}
+Goal: ${query.businessGoal || "N/A"}
+Requirements: ${query.customerRequirements || "N/A"}
+`,
+    ];
 
-        return `
-==================================================
-Product ${index + 1}
-==================================================
+    products.forEach((product, index) => {
+      const metadata = product.metadata ?? {};
 
-Product
-${metadata.product}
+      const specs = Object.entries(metadata.specifications ?? {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
 
-Category
-${metadata.mainCategory}
+      sections.push(`
+Product ${index + 1}: ${metadata.product}
 
-Sub Category
-${metadata.subCategory}
+Category: ${metadata.mainCategory}/${metadata.subCategory}
 
-Description
-${item.content ?? item.pageContent ?? ""}
+Description:
+${metadata.shortDescription ?? product.content ?? product.pageContent ?? ""}
 
-Business Types
-${(metadata.businessTypes ?? []).join(", ")}
+Features:
+${(metadata.features ?? []).join(", ")}
 
-Industries
-${(metadata.industries ?? []).join(", ")}
+Specifications:
+${specs || "N/A"}
 
-Customer Goals
-${(metadata.customerGoals ?? []).join(", ")}
-
-Applications
-${(metadata.useCases ?? []).join(", ")}
-
-Specifications
-${JSON.stringify(metadata.specifications ?? {}, null, 2)}
-
-Available Sizes
-${(metadata.availableSizes ?? metadata.sizes ?? []).join(", ")}
-
-Materials
+Materials:
 ${(metadata.materials ?? []).join(", ")}
 
-Finishes
-${(metadata.finishes ?? []).join(", ")}
+Sizes:
+${(metadata.availableSizes ?? []).join(", ")}
 
-Minimum Order
+MOQ:
 ${metadata.minimumOrder ?? "N/A"}
+`);
+    });
 
-Lead Time
-${metadata.leadTime ?? "N/A"}
-
-Related Products
-${(metadata.relatedProducts ?? []).join(", ")}
-
-Frequently Bought Together
-${(metadata.frequentlyBoughtWith ?? []).join(", ")}
-`;
-      })
-      .join("\n\n");
+    return sections.join("\n");
   }
 }

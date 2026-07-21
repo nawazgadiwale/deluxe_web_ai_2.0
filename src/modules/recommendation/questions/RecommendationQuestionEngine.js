@@ -1,5 +1,6 @@
 import ResponseBuilder from "../../../core/responses/Apiresponse.js";
 import { RECOMMENDATION_RESET_PATTERNS } from "../../routing/utils/RoutingConstants.js";
+import BUSINESS_KNOWLEDGE from "../knowledge/BusinessKnowledge.js";
 
 const responseBuilder = new ResponseBuilder();
 
@@ -29,39 +30,6 @@ const BUSINESS_TYPES = {
   gym: "Gym",
 };
 
-const BUSINESS_GOALS = {
-  branding: "Brand Awareness",
-  awareness: "Brand Awareness",
-  visibility: "Brand Awareness",
-  identity: "Brand Awareness",
-  recognition: "Brand Awareness",
-
-  advertise: "Advertising",
-  advertising: "Advertising",
-
-  promotion: "Promotion",
-  promote: "Promotion",
-  marketing: "Marketing",
-  customers: "Promotion",
-  traffic: "Promotion",
-  sales: "Promotion",
-  footfall: "Promotion",
-
-  packaging: "Packaging",
-
-  interior: "Interior Branding",
-  exterior: "Exterior Branding",
-
-  signage: "Store Branding",
-
-  opening: "Store Launch",
-  launch: "Store Launch",
-
-  gifts: "Corporate Gifts",
-
-  loyalty: "Customer Engagement",
-};
-
 const OCCASIONS = {
   wedding: "Wedding",
   birthday: "Birthday",
@@ -75,421 +43,81 @@ const OCCASIONS = {
   gift: "Gift",
   invitation: "Invitation",
 };
-
-// export default class RecommendationQuestionEngine {
-//   execute(state) {
-//     const ctx = state.recommendationContext;
-
-//     this.resetIfNewRecommendation(state, ctx);
-
-//     this.updateContext(state, ctx);
-
-//     resetIfNewRecommendation(state, ctx) {
-//   if (!ctx.active) {
-//     return;
-//   }
-
-//   const message = (state.userMessage ?? "").toLowerCase();
-
-//   const startsNewRecommendation =
-//     [
-//       "recommend",
-//       "suggest",
-//       "looking for",
-//       "need products",
-//       "opening",
-//       "starting",
-//       "launching",
-//     ].some((x) => message.includes(x));
-
-//   if (!startsNewRecommendation) {
-//     return;
-//   }
-
-//   Object.assign(ctx, {
-//     customerType: null,
-//     businessType: null,
-//     businessGoal: null,
-//     occasion: null,
-//     requirements: null,
-//     originalQuery: state.userMessage,
-//     extracted: false,
-
-//     active: false,
-
-//     products: [],
-//     totalProducts: 0,
-//     page: 1,
-//     hasMore: false,
-//   });
-// }
-
-//     state.recommendationContext ??= {
-//       customerType: null,
-
-//       businessType: null,
-
-//       businessGoal: null,
-
-//       occasion: null,
-
-//       requirements: null,
-
-//       originalQuery: null,
-
-//       extracted: false,
-
-//       products: [],
-
-//       totalProducts: 0,
-
-//       page: 1,
-
-//       hasMore: false,
-//     };
-
-//     const ctx = state.recommendationContext;
-
-//     if (!state.action) {
-//     ctx.originalQuery = state.userMessage;
-// }
-
-//     this.updateContext(state, ctx);
-
-//     /*
-//      * =====================================================
-//      * Ask Customer Type
-//      * =====================================================
-//      */
-
-//     if (!ctx.customerType) {
-//       state.workflow = "RECOMMENDATION";
-//       state.currentStep = "ASK_CUSTOMER_TYPE";
-//       state.awaitingDecision = true;
-
-//       return {
-//         ready: false,
-//         response: responseBuilder.recommendation({
-//           summary: "Let's find the right products for you.",
-//           followUpQuestion:
-//             "Are you looking for products for your business or personal use?",
-//           products: [],
-//           actions: [
-//             {
-//               id: "RECOMMENDATION_BUSINESS",
-//               label: "Business",
-//               payload: {
-//                 customerType: "BUSINESS",
-//               },
-//             },
-//             {
-//               id: "RECOMMENDATION_INDIVIDUAL",
-//               label: "Individual",
-//               payload: {
-//                 customerType: "INDIVIDUAL",
-//               },
-//             },
-//           ],
-//         }),
-//       };
-//     }
-
-//     /*
-//      * =====================================================
-//      * Ask Business Type
-//      * =====================================================
-//      */
-
-//     if (ctx.customerType === "BUSINESS" && !ctx.businessType) {
-//       state.workflow = "RECOMMENDATION";
-//       state.currentStep = "ASK_BUSINESS_TYPE";
-//       state.awaitingDecision = true;
-
-//       return {
-//         ready: false,
-//         response: responseBuilder.recommendation({
-//           summary: "What type of business do you have?",
-//           products: [],
-//           actions: [
-//             {
-//               id: "BUSINESS_CAFE",
-//               label: "Cafe",
-//               payload: {
-//                 businessType: "Cafe",
-//               },
-//             },
-//             {
-//               id: "BUSINESS_RESTAURANT",
-//               label: "Restaurant",
-//               payload: {
-//                 businessType: "Restaurant",
-//               },
-//             },
-//             {
-//               id: "BUSINESS_HOTEL",
-//               label: "Hotel",
-//               payload: {
-//                 businessType: "Hotel",
-//               },
-//             },
-//             {
-//               id: "BUSINESS_RETAIL",
-//               label: "Retail",
-//               payload: {
-//                 businessType: "Retail",
-//               },
-//             },
-//             {
-//               id: "BUSINESS_HOSPITAL",
-//               label: "Hospital",
-//               payload: {
-//                 businessType: "Hospital",
-//               },
-//             },
-//             {
-//               id: "BUSINESS_OTHER",
-//               label: "Other",
-//               payload: {
-//                 businessType: "Other",
-//               },
-//             },
-//           ],
-//         }),
-//       };
-//     }
-
-//     /*
-//      * =====================================================
-//      * Ask Business Goal
-//      * =====================================================
-//      */
-
-//     if (ctx.customerType === "BUSINESS" && !ctx.businessGoal) {
-//       state.workflow = "RECOMMENDATION";
-//       state.currentStep = "ASK_BUSINESS_GOAL";
-//       state.awaitingDecision = true;
-
-//       return {
-//         ready: false,
-//         response: responseBuilder.recommendation({
-//           summary: "What is your primary objective?",
-//           products: [],
-//           actions: [
-//             {
-//               id: "GOAL_BRANDING",
-//               label: "Brand Awareness",
-//               payload: {
-//                 businessGoal: "Brand Awareness",
-//               },
-//             },
-//             {
-//               id: "GOAL_PROMOTION",
-//               label: "Marketing & Promotion",
-//               payload: {
-//                 businessGoal: "Marketing & Promotion",
-//               },
-//             },
-//             {
-//               id: "GOAL_PACKAGING",
-//               label: "Packaging",
-//               payload: {
-//                 businessGoal: "Packaging",
-//               },
-//             },
-//             {
-//               id: "GOAL_SIGNAGE",
-//               label: "Store Branding",
-//               payload: {
-//                 businessGoal: "Store Branding",
-//               },
-//             },
-//           ],
-//         }),
-//       };
-//     }
-
-//     /*
-//      * =====================================================
-//      * Ask Individual Requirement
-//      * =====================================================
-//      */
-
-//     if (ctx.customerType === "INDIVIDUAL" && !ctx.requirements) {
-//       state.workflow = "RECOMMENDATION";
-//       if (ctx.customerType === "INDIVIDUAL" && !ctx.occasion) {
-//         state.workflow = "RECOMMENDATION";
-//         state.currentStep = "ASK_OCCASION";
-//         state.awaitingDecision = true;
-
-//         return {
-//           ready: false,
-//           response: responseBuilder.recommendation({
-//             summary: "What is the occasion?",
-//             followUpQuestion:
-//               "For example: Wedding, Birthday, Anniversary, Baby Shower, Festival.",
-//             products: [],
-//             actions: [],
-//           }),
-//         };
-//       }
-//       state.currentStep = "ASK_REQUIREMENTS";
-//       state.awaitingDecision = true;
-
-//       return {
-//         ready: false,
-//         response: responseBuilder.recommendation({
-//           summary: "Tell me what you're looking for.",
-//           followUpQuestion:
-//             "For example: Wedding invitations, Birthday gifts, Custom mugs.",
-//           products: [],
-//           actions: [],
-//         }),
-//       };
-//     }
-
-//     return {
-//       ready: true,
-//     };
-//   }
-//   updateContext(state, ctx) {
-//     const payload = state.action?.payload ?? {};
-//     const text = (state.userMessage ?? "").trim().toLowerCase();
-
-//     /*
-//      * ============================================
-//      * Automatic Extraction
-//      * ============================================
-//      */
-
-//     if (!state.action) {
-//       for (const [key, value] of Object.entries(BUSINESS_TYPES)) {
-//         if (text.includes(key)) {
-//           ctx.customerType = "BUSINESS";
-//           ctx.businessType = value;
-//           ctx.extracted = false;
-//           break;
-//         }
-//       }
-
-//       for (const [key, value] of Object.entries(BUSINESS_GOALS)) {
-//         if (text.includes(key)) {
-//           ctx.businessGoal = value;
-//           break;
-//         }
-//       }
-
-//       for (const [key, value] of Object.entries(OCCASIONS)) {
-//         if (text.includes(key)) {
-//           ctx.customerType = "INDIVIDUAL";
-//           ctx.occasion = value;
-//           break;
-//         }
-//       }
-
-//       ctx.extracted = true;
-//     }
-
-//     /*
-//      * ============================================
-//      * UI Actions
-//      * ============================================
-//      */
-
-//     if (payload.customerType) {
-//       ctx.customerType = payload.customerType;
-//     }
-
-//     if (payload.businessType) {
-//       ctx.businessType = payload.businessType;
-//     }
-
-//     if (payload.businessGoal) {
-//       ctx.businessGoal = payload.businessGoal;
-//     }
-
-//     if (payload.occasion) {
-//       ctx.occasion = payload.occasion;
-//     }
-
-//     /*
-//      * ============================================
-//      * Text Answers
-//      * ============================================
-//      */
-
-//     if (!state.action) {
-//       switch (state.currentStep) {
-//         case "ASK_CUSTOMER_TYPE":
-//           if (["business", "company", "corporate"].includes(text)) {
-//             ctx.customerType = "BUSINESS";
-//           }
-
-//           if (["individual", "personal"].includes(text)) {
-//             ctx.customerType = "INDIVIDUAL";
-//           }
-//           break;
-
-//         case "ASK_BUSINESS_TYPE":
-//           for (const [key, value] of Object.entries(BUSINESS_TYPES)) {
-//             if (text.includes(key)) {
-//               ctx.businessType = value;
-//               break;
-//             }
-//           }
-//           break;
-
-//         case "ASK_BUSINESS_GOAL":
-//           for (const [key, value] of Object.entries(BUSINESS_GOALS)) {
-//             if (text.includes(key)) {
-//               ctx.businessGoal = value;
-//               break;
-//             }
-//           }
-//           break;
-
-//         case "ASK_OCCASION":
-//           for (const [key, value] of Object.entries(OCCASIONS)) {
-//             if (text.includes(key)) {
-//               ctx.occasion = value;
-//               break;
-//             }
-//           }
-//           break;
-
-//         case "ASK_REQUIREMENTS":
-//           ctx.requirements = state.userMessage.trim();
-//           break;
-//       }
-//     }
-//   }
-// }
-
 export default class RecommendationQuestionEngine {
   execute(state) {
-    /*
-     * =====================================================
-     * Recommendation Context
-     * =====================================================
-     */
-
     state.recommendationContext ??= {
+      /*
+       * =====================================================
+       * Conversation
+       * =====================================================
+       */
+
+      active: false,
+      completed: false,
+
+      conversationStage: "DISCOVERY",
+
+      originalQuery: null,
+
+      /*
+       * =====================================================
+       * Customer Profile
+       * =====================================================
+       */
+
       customerType: null,
 
       businessType: null,
 
-      businessGoal: null,
-
       occasion: null,
 
-      requirements: null,
+      /*
+       * =====================================================
+       * Business Understanding
+       * =====================================================
+       */
 
-      originalQuery: null,
+      goals: [],
 
-      extracted: false,
+      businessGoals: [],
 
-      active: false,
+      challenges: [],
+
+      targetAudience: [],
+
+      campaigns: [],
+
+      requirements: [],
+
+      constraints: [],
+
+      budget: null,
+
+      timeline: null,
+
+      /*
+       * =====================================================
+       * AI Understanding
+       * =====================================================
+       */
+
+      confidence: 0,
+
+      missingInformation: [],
+
+      extracted: {},
+
+      lastQuestion: null,
+
+      /*
+       * =====================================================
+       * Recommendation
+       * =====================================================
+       */
 
       products: [],
+
+      catalogProducts: [],
 
       totalProducts: 0,
 
@@ -514,7 +142,7 @@ export default class RecommendationQuestionEngine {
      * =====================================================
      */
 
-    if (!state.action) {
+    if (!state.action && !ctx.originalQuery) {
       ctx.originalQuery = state.userMessage;
     }
 
@@ -536,6 +164,7 @@ export default class RecommendationQuestionEngine {
       state.workflow = "RECOMMENDATION";
       state.currentStep = "ASK_CUSTOMER_TYPE";
       state.awaitingDecision = true;
+      ctx.active = true;
 
       return {
         ready: false,
@@ -569,37 +198,49 @@ export default class RecommendationQuestionEngine {
      * Business Flow
      * =====================================================
      */
-
     if (ctx.customerType === "BUSINESS") {
       if (!ctx.businessType) {
         state.workflow = "RECOMMENDATION";
         state.currentStep = "ASK_BUSINESS_TYPE";
         state.awaitingDecision = true;
+        ctx.active = true;
+
+        const businessExamples = Object.keys(BUSINESS_KNOWLEDGE)
+          .filter((name) => name !== "Other")
+          .slice(0, 8)
+          .join(", ");
 
         return {
           ready: false,
           response: responseBuilder.recommendation({
-            summary: "What type of business do you have?",
-            followUpQuestion:
-              "For example: Cafe, Clinic, Restaurant, Hotel, Retail Store...",
+            summary:
+              "To recommend the most suitable printing solution, I'd like to understand your business.",
+
+            followUpQuestion: `What type of business do you operate? For example: ${businessExamples}.`,
+
             products: [],
             actions: [],
           }),
         };
       }
-
-      if (!ctx.businessGoal) {
+      if (!ctx.businessGoals?.length) {
         state.workflow = "RECOMMENDATION";
         state.currentStep = "ASK_BUSINESS_GOAL";
         state.awaitingDecision = true;
+        ctx.active = true;
+
+        const business =
+          BUSINESS_KNOWLEDGE[ctx.businessType] ?? BUSINESS_KNOWLEDGE.Other;
+
+        const goalOptions = business.goals.map((goal) => goal.name).join(", ");
 
         return {
           ready: false,
           response: responseBuilder.recommendation({
-            summary: "What would you like to achieve?",
-            followUpQuestion:
-              "Brand awareness, marketing, packaging, promotions, signage...",
+            summary: `What would you like your printed materials to achieve for your ${ctx.businessType.toLowerCase()}?`,
+            followUpQuestion: `For example: ${goalOptions}. This helps me recommend the most suitable printing products for your business.`,
             products: [],
+
             actions: [],
           }),
         };
@@ -621,6 +262,7 @@ export default class RecommendationQuestionEngine {
         state.workflow = "RECOMMENDATION";
         state.currentStep = "ASK_OCCASION";
         state.awaitingDecision = true;
+        ctx.active = true;
 
         return {
           ready: false,
@@ -633,11 +275,11 @@ export default class RecommendationQuestionEngine {
           }),
         };
       }
-
-      if (!ctx.requirements) {
+      if (!ctx.requirements?.length) {
         state.workflow = "RECOMMENDATION";
         state.currentStep = "ASK_REQUIREMENTS";
         state.awaitingDecision = true;
+        ctx.active = true;
 
         return {
           ready: false,
@@ -752,7 +394,6 @@ export default class RecommendationQuestionEngine {
      */
 
     const businessTypes = Object.entries(BUSINESS_TYPES);
-    const businessGoals = Object.entries(BUSINESS_GOALS);
     const occasions = Object.entries(OCCASIONS);
 
     /*
@@ -782,16 +423,14 @@ export default class RecommendationQuestionEngine {
        * --------------------------
        */
 
-      let detectedGoal = null;
+      const business =
+        BUSINESS_KNOWLEDGE[ctx.businessType] ?? BUSINESS_KNOWLEDGE.Other;
 
-      for (const [keyword, value] of businessGoals) {
-        if (text.includes(keyword)) {
-          detectedGoal = value;
+      for (const goal of business.goals) {
+        if (this.matchesGoal(text, goal)) {
+          ctx.businessGoals = [goal.name];
+          break;
         }
-      }
-
-      if (detectedGoal) {
-        ctx.businessGoal = detectedGoal;
       }
 
       /*
@@ -800,11 +439,12 @@ export default class RecommendationQuestionEngine {
        * --------------------------
        */
 
-      for (const [keyword, value] of occasions) {
-        if (text.includes(keyword)) {
-          ctx.customerType = "INDIVIDUAL";
-          ctx.occasion = value;
-          break;
+      if (state.currentStep === "ASK_OCCASION") {
+        for (const [keyword, value] of occasions) {
+          if (text.includes(keyword)) {
+            ctx.occasion = value;
+            break;
+          }
         }
       }
 
@@ -814,8 +454,11 @@ export default class RecommendationQuestionEngine {
        * --------------------------
        */
 
-      if (state.currentStep === "ASK_REQUIREMENTS" && !ctx.requirements) {
-        ctx.requirements = state.userMessage.trim();
+      if (
+        state.currentStep === "ASK_REQUIREMENTS" &&
+        !ctx.requirements?.length
+      ) {
+        ctx.requirements = [state.userMessage.replace(/\s+/g, " ").trim()];
       }
 
       /*
@@ -825,14 +468,87 @@ export default class RecommendationQuestionEngine {
        */
 
       ctx.extracted = Boolean(
-        ctx.businessType || ctx.businessGoal || ctx.occasion,
+        ctx.customerType ||
+        ctx.businessType ||
+        (ctx.businessGoals?.length ?? 0) > 0 ||
+        ctx.occasion ||
+        (ctx.requirements?.length ?? 0) > 0 ||
+        (ctx.targetAudience?.length ?? 0) > 0 ||
+        (ctx.campaigns?.length ?? 0) > 0 ||
+        (ctx.constraints?.length ?? 0) > 0 ||
+        ctx.budget ||
+        ctx.timeline,
       );
     }
-
     /*
      * =====================================================
      * UI Actions
      * =====================================================
+     */
+
+    const actionId = state.action?.id;
+
+    /*
+     * Customer Type
+     */
+    switch (actionId) {
+      case "RECOMMENDATION_BUSINESS":
+        ctx.customerType = "BUSINESS";
+        break;
+
+      case "RECOMMENDATION_INDIVIDUAL":
+        ctx.customerType = "INDIVIDUAL";
+        break;
+
+      case "BUSINESS_CAFE":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Cafe";
+        break;
+
+      case "BUSINESS_RESTAURANT":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Restaurant";
+        break;
+
+      case "BUSINESS_HOTEL":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Hotel";
+        break;
+
+      case "BUSINESS_RETAIL":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Retail";
+        break;
+
+      case "BUSINESS_HOSPITAL":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Hospital";
+        break;
+
+      case "BUSINESS_OTHER":
+        ctx.customerType = "BUSINESS";
+        ctx.businessType = "Other";
+        break;
+
+      case "GOAL_BRANDING":
+        ctx.businessGoals = ["Brand Awareness"];
+        break;
+
+      case "GOAL_PROMOTION":
+        ctx.businessGoals = ["Promotions"];
+        break;
+
+      case "GOAL_PACKAGING":
+        ctx.businessGoals = ["Packaging"];
+        break;
+
+      case "GOAL_SIGNAGE":
+        ctx.businessGoals = ["Signage"];
+        break;
+    }
+
+    /*
+     * Payload (if present)
      */
 
     if (payload.customerType) {
@@ -844,7 +560,7 @@ export default class RecommendationQuestionEngine {
     }
 
     if (payload.businessGoal) {
-      ctx.businessGoal = payload.businessGoal;
+      ctx.businessGoals = [payload.businessGoal];
     }
 
     if (payload.occasion) {
@@ -852,7 +568,7 @@ export default class RecommendationQuestionEngine {
     }
 
     /*
-     * UI action already updated the context.
+     * Action already handled
      */
 
     if (state.action) {
@@ -908,16 +624,14 @@ export default class RecommendationQuestionEngine {
        */
 
       case "ASK_BUSINESS_GOAL": {
-        let detectedGoal = null;
+        const business =
+          BUSINESS_KNOWLEDGE[ctx.businessType] ?? BUSINESS_KNOWLEDGE.Other;
 
-        for (const [keyword, value] of businessGoals) {
-          if (text.includes(keyword)) {
-            detectedGoal = value;
+        for (const goal of business.goals) {
+          if (this.matchesGoal(text, goal)) {
+            ctx.businessGoals = [goal.name];
+            break;
           }
-        }
-
-        if (detectedGoal) {
-          ctx.businessGoal = detectedGoal;
         }
 
         break;
@@ -947,12 +661,21 @@ export default class RecommendationQuestionEngine {
        */
 
       case "ASK_REQUIREMENTS": {
-        ctx.requirements = state.userMessage.trim();
+        ctx.requirements = [state.userMessage.replace(/\s+/g, " ").trim()];
         break;
       }
 
       default:
         break;
     }
+  }
+
+  // helper method
+  matchesGoal(text, goal = {}) {
+    const searchable = [goal.name, goal.description, ...(goal.keywords ?? [])]
+      .filter(Boolean)
+      .map((value) => value.toLowerCase());
+
+    return searchable.some((keyword) => text.includes(keyword));
   }
 }

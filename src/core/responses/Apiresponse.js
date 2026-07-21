@@ -46,7 +46,7 @@ export default class ResponseBuilder {
 
   productDetails(data, metadata = {}) {
     return this.success({
-      type: "recommendation",
+      type: "product_details",
       data,
       actions: data?.actions ?? [],
       metadata,
@@ -67,22 +67,112 @@ export default class ResponseBuilder {
       metadata,
     });
   }
-
   /*
-  *comparison 
-  */
-  comparison(data) {
-    return {
+   * =====================================================
+   * Order Completed
+   * =====================================================
+   */
+
+  orderCompleted(data = {}, metadata = {}) {
+    return this.success({
+      type: "order_completed",
+      data,
+      actions: data?.actions ?? [],
+      metadata,
+    });
+  }
+  /*
+   * =====================================================
+   * Append Resume Workflow Prompt
+   * =====================================================
+   */
+
+  appendResumePrompt(response, pausedWorkflow) {
+    if (!pausedWorkflow) {
+      return response;
+    }
+
+    const workflowLabels = {
+      LEAD: "quote request",
+      ORDER: "order",
+      RECOMMENDATION: "recommendation",
+    };
+
+    const workflow = workflowLabels[pausedWorkflow.workflow] ?? "request";
+
+    response.data ??= {};
+    response.actions ??= [];
+
+    response.data.followUpQuestion = `You still have an unfinished ${workflow}. Would you like to continue?`;
+
+    response.actions.push(
+      {
+        id: "RESUME_WORKFLOW",
+        label: `Continue ${workflow}`,
+        payload: {},
+      },
+      {
+        id: "CANCEL_WORKFLOW",
+        label: "Cancel",
+        payload: {},
+      },
+    );
+
+    return response;
+  }
+  /*
+   *comparison
+   */
+
+  comparison(data, metadata = {}) {
+    return this.success({
       type: "comparison",
 
-      summary: data.summary,
+      data: {
+        summary: data.summary,
 
-      comparison: data.comparison,
+        comparison: data.comparison ?? [],
 
-      products: data.products,
+        winner: data.winner ?? {
+          product: "",
+          reason: "",
+        },
+
+        recommendation: data.recommendation ?? {
+          message: "",
+          alternative: "",
+        },
+
+        followUpQuestion: data.followUpQuestion ?? "",
+
+        products: data.products ?? [],
+      },
 
       actions: data.actions ?? [],
-    };
+
+      metadata,
+    });
+  }
+
+  /*
+   * =====================================================
+   * out of scope
+   * =====================================================
+   */
+  outOfScope(data, metadata = {}) {
+    return this.success({
+      type: "out_of_scope",
+
+      data: {
+        title: data.title,
+        message: data.message,
+        suggestions: data.suggestions ?? [],
+      },
+
+      actions: data.actions ?? [],
+
+      metadata,
+    });
   }
 
   /*

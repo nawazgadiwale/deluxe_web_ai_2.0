@@ -1,10 +1,24 @@
+import { jsonrepair } from "jsonrepair";
+
 export default class ComparisonValidator {
   validate(result) {
+    /*
+     * =====================================================
+     * No Comparison
+     * =====================================================
+     */
+
     if (!result) {
       return {
         type: "comparison",
 
         summary: "Please select at least two products to compare.",
+
+        comparison: [],
+
+        recommendation: "",
+
+        followUpQuestion: "",
 
         products: [],
 
@@ -12,34 +26,83 @@ export default class ComparisonValidator {
       };
     }
 
+    /*
+     * =====================================================
+     * Parse LLM Output
+     * =====================================================
+     */
+
+    let llm = result.llm;
+
+    try {
+      if (typeof llm === "string") {
+        llm = JSON.parse(jsonrepair(llm));
+      }
+    } catch {
+      llm = {};
+    }
+
+    /*
+     * =====================================================
+     * Normalize Comparison Rows
+     * =====================================================
+     */
+
+    const comparison = Array.isArray(llm.comparison)
+      ? llm.comparison.map((item) => ({
+          attribute: item.attribute ?? "",
+
+          product1: item.product1 ?? "",
+
+          product2: item.product2 ?? "",
+        }))
+      : [];
+
+    /*
+     * =====================================================
+     * Normalize Products
+     * =====================================================
+     */
+
+    const products = (result.products ?? []).map((product) => ({
+      name: product.metadata?.product ?? "",
+
+      category: product.metadata?.mainCategory ?? "",
+
+      subCategory: product.metadata?.subCategory ?? "",
+
+      description: product.content ?? "",
+
+      businessTypes: product.metadata?.businessTypes ?? [],
+
+      industries: product.metadata?.industries ?? [],
+
+      customerGoals: product.metadata?.customerGoals ?? [],
+
+      applications: product.metadata?.useCases ?? [],
+
+      relatedProducts: product.metadata?.relatedProducts ?? [],
+    }));
+
+    /*
+     * =====================================================
+     * Response
+     * =====================================================
+     */
+
     return {
       type: "comparison",
 
-      summary: result.llm,
+      summary:
+        llm.summary ?? "Here's a comparison between the selected products.",
 
-      products: result.products.map((item) => ({
-        name: item.metadata.product,
+      comparison,
 
-        category: item.metadata.mainCategory,
+      recommendation: llm.recommendation ?? "",
 
-        subCategory: item.metadata.subCategory,
+      followUpQuestion: llm.followUpQuestion ?? "",
 
-        description: item.content ?? item.pageContent ?? "",
-
-        specifications: item.metadata.specifications ?? {},
-
-        materials: item.metadata.materials ?? [],
-
-        finishes: item.metadata.finishes ?? [],
-
-        sizes: item.metadata.availableSizes ?? item.metadata.sizes ?? [],
-
-        minimumOrder: item.metadata.minimumOrder,
-
-        leadTime: item.metadata.leadTime,
-
-        artworkRequired: item.metadata.artworkRequired ?? false,
-      })),
+      products,
 
       actions: [
         {
@@ -48,9 +111,19 @@ export default class ComparisonValidator {
           label: "Request Quote",
 
           payload: {
-            products: result.products.map((p) => p.metadata.product),
+            products: products.map((p) => p.name),
           },
         },
+
+        ...products.map((product) => ({
+          id: "START_ORDER",
+
+          label: `Order ${product.name}`,
+
+          payload: {
+            product: product.name,
+          },
+        })),
 
         {
           id: "CONTACT_SALES",
@@ -58,7 +131,7 @@ export default class ComparisonValidator {
           label: "Talk to Expert",
 
           payload: {
-            products: result.products.map((p) => p.metadata.product),
+            products: products.map((p) => p.name),
           },
         },
       ],

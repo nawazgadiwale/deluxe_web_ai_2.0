@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import LEAD_MESSAGES from "./IntentTypes/LeadMessages.js";
+import LEAD_TYPES from "./IntentTypes/LeadTypes.js";
 
 export default class LeadManager {
   createLead() {
@@ -11,22 +13,35 @@ export default class LeadManager {
 
       customer: {
         name: null,
-        mobile: null,
+        phone: null,
         email: null,
         company: null,
       },
 
+      order: null,
+
       notes: null,
 
       assignedTo: null,
+
+      source: "AI_ASSISTANT",
 
       createdAt: new Date(),
 
       updatedAt: new Date(),
     };
   }
+  getLeadIntroduction(type) {
+    return (
+      LEAD_MESSAGES[type]?.introduction ??
+      LEAD_MESSAGES[LEAD_TYPES.GENERAL_ENQUIRY].introduction
+    );
+  }
 
   updateCustomer(lead, customer = {}) {
+    console.log("Before:", lead?.customer);
+    console.log("Incoming:", customer);
+
     if (!lead) {
       lead = this.createLead();
     }
@@ -35,12 +50,12 @@ export default class LeadManager {
       ...lead.customer,
       ...customer,
     };
-
     lead.updatedAt = new Date();
+
+    console.log("After:", lead.customer);
 
     return lead;
   }
-
   updateNotes(lead, notes) {
     if (!lead) {
       return null;
@@ -97,6 +112,7 @@ export default class LeadManager {
    */
 
   getNextQuestion(lead) {
+    console.log("Lead Customer:", lead.customer);
     const customer = lead.customer ?? {};
 
     if (!customer.name) {
@@ -105,16 +121,17 @@ export default class LeadManager {
 
         field: "name",
 
-        message:
-          "I'd be happy to connect you with one of our printing experts.\n\nMay I know your name?",
+        message: `${this.getLeadIntroduction(
+          lead.type,
+        )}\n\nMay I know your name?`,
       };
     }
 
-    if (!customer.mobile) {
+    if (!customer.phone) {
       return {
-        step: "ASK_MOBILE",
+        step: "ASK_PHONE",
 
-        field: "mobile",
+        field: "phone",
 
         message: `Thank you ${customer.name}.\n\nMay I have your phone number?`,
       };
@@ -152,12 +169,12 @@ export default class LeadManager {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   }
 
-  isMobileValid(mobile) {
-    if (!mobile) {
+  isPhoneValid(phone) {
+    if (!phone) {
       return false;
     }
 
-    return /^[+\d\s()-]{7,20}$/.test(mobile.trim());
+    return /^[+\d\s()-]{7,20}$/.test(phone.trim());
   }
   isNameValid(name) {
     if (!name) {
@@ -198,7 +215,7 @@ export default class LeadManager {
 
     return (
       this.isNameValid(customer.name) &&
-      this.isMobileValid(customer.mobile) &&
+      this.isPhoneValid(customer.phone) &&
       this.isEmailValid(customer.email)
     );
   }

@@ -32,7 +32,7 @@ const customerSchema = new mongoose.Schema(
             default: null,
         },
 
-        mobile: {
+        phone: {
             type: String,
             trim: true,
             default: null,

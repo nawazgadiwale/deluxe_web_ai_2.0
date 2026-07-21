@@ -67,6 +67,13 @@ export default class DiscoveryNode {
       },
     });
 
+    if (state.workflowStack?.length) {
+      responseBuilder.appendResumePrompt(
+        state.response,
+        state.workflowStack[state.workflowStack.length - 1],
+      );
+    }
+
     return state;
   }
 }

@@ -17,7 +17,8 @@ export default class ProductDetailsValidator {
     return {
       type: "product_details",
 
-      summary: result.llm,
+      // AI generated overview
+      summary: result.overview,
 
       product: {
         name: metadata.product,
@@ -28,6 +29,15 @@ export default class ProductDetailsValidator {
 
         description: result.description,
 
+        // NEW
+        businessTypes: metadata.businessTypes ?? [],
+
+        industries: metadata.industries ?? [],
+
+        customerGoals: metadata.customerGoals ?? [],
+
+        applications: metadata.useCases ?? [],
+
         specifications: metadata.specifications ?? {},
 
         availableSizes: metadata.availableSizes ?? metadata.sizes ?? [],
@@ -35,8 +45,6 @@ export default class ProductDetailsValidator {
         materials: metadata.materials ?? [],
 
         finishes: metadata.finishes ?? [],
-
-        applications: metadata.useCases ?? [],
 
         minimumOrder: metadata.minimumOrder ?? null,
 
@@ -64,8 +72,8 @@ export default class ProductDetailsValidator {
         },
 
         {
-          id: "REQUEST_QUOTE",
-          label: "Request Quote",
+          id: "START_ORDER",
+          label: "Order",
 
           payload: {
             product: metadata.product,

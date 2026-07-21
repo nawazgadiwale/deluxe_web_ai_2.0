@@ -1,39 +1,15 @@
 import WorkflowRegistry from "./WorkflowRegistry.js";
-
-const RESUMABLE_STEPS = {
-  RECOMMENDATION: [
-    "ASK_CUSTOMER_TYPE",
-    "ASK_BUSINESS_TYPE",
-    "ASK_BUSINESS_GOAL",
-    "ASK_REQUIREMENTS",
-  ],
-
-  LEAD: ["ASK_NAME", "ASK_PHONE", "ASK_EMAIL", "ASK_COMPANY"],
-};
-
-const COMPLETED_STEPS = {
-  RECOMMENDATION: ["SHOW_RECOMMENDATIONS", "RECOMMENDATION_COMPLETED"],
-  LEAD: ["LEAD_COMPLETED"],
-};
-
-const INTERRUPT_CAPABILITIES = [
-  "greeting",
-  "faq",
-  "support",
-  "product_details",
-  "comparison",
-  "discovery",
-];
+import WorkflowConfig from "./WorkflowConfig.js";
+import {
+  GREETING_PATTERNS,
+  FAQ_PATTERNS,
+  COMPARISON_PATTERNS,
+  DETAIL_PATTERNS,
+  SUPPORT_PATTERNS,
+  LEAD_PATTERNS,
+} from "../routing/utils/RoutingConstants.js";
 
 export default class WorkflowState {
-  isActive(state) {
-    return Boolean(state.workflow);
-  }
-
-  isAwaitingDecision(state) {
-    return Boolean(state.awaitingDecision);
-  }
-
   get(workflow) {
     if (!workflow) return null;
 
@@ -49,31 +25,26 @@ export default class WorkflowState {
   }
 
   isPersistent(workflow) {
-    return this.get(workflow)?.persistent ?? false;
-  }
-
-  shouldResume(state) {
-    if (!this.isActive(state)) return false;
-
-    if (!this.isAwaitingDecision(state)) return false;
-
-    if (this.isCompleted(state)) return false;
-
-    const resumable = RESUMABLE_STEPS[state.workflow] ?? [];
-
-    return resumable.includes(state.currentStep);
+    return WorkflowConfig[workflow]?.persistent ?? false;
   }
 
   canInterrupt(state, capability) {
-    if (!this.isActive(state)) return true;
+    if (!this.isActive(state)) {
+      return true;
+    }
 
-    if (this.isCompleted(state)) return true;
+    if (this.isCompleted(state)) {
+      return true;
+    }
 
-    if (!this.isPersistent(state.workflow)) return true;
+    const config = WorkflowConfig[state.workflow];
 
-    return INTERRUPT_CAPABILITIES.includes(capability);
+    if (!config?.persistent) {
+      return true;
+    }
+
+    return config.interruptibleBy.includes(capability);
   }
-
   clear(state) {
     state.workflow = null;
     state.currentStep = null;
@@ -93,7 +64,7 @@ export default class WorkflowState {
       return false;
     }
 
-    const completed = COMPLETED_STEPS[state.workflow] ?? [];
+    const completed = WorkflowConfig[state.workflow]?.completed ?? [];
 
     return completed.includes(state.currentStep);
   }
@@ -151,5 +122,268 @@ export default class WorkflowState {
 
   isActive(state) {
     return Boolean(state.workflow);
+  }
+
+  /*
+   * =====================================================
+   * Pause & Resume Workflow
+   * =====================================================
+   */
+
+  shouldPause(state, capability) {
+    if (!capability) {
+      return false;
+    }
+
+    if (!this.isActive(state)) {
+      return false;
+    }
+
+    if (this.isCompleted(state)) {
+      return false;
+    }
+
+    if (!this.isPersistent(state.workflow)) {
+      return false;
+    }
+
+    if (this.currentCapability(state) === capability) {
+      return false;
+    }
+    const config = WorkflowConfig[state.workflow];
+
+    return config?.interruptibleBy.includes(capability);
+  }
+
+  pause(state) {
+    if (!state.workflow) {
+      return;
+    }
+
+    state.workflowStack ??= [];
+
+    const last = state.workflowStack.at(-1);
+
+    if (
+      !last ||
+      last.workflow !== state.workflow ||
+      last.currentStep !== state.currentStep
+    ) {
+      state.workflowStack.push({
+        workflow: state.workflow,
+        currentStep: state.currentStep,
+        awaitingDecision: state.awaitingDecision,
+        routing: state.routing ? { ...state.routing } : null,
+
+        recommendationContext: state.recommendationContext
+          ? { ...state.recommendationContext }
+          : null,
+
+        leadRequest: state.leadRequest ? { ...state.leadRequest } : null,
+
+        order: state.order ? { ...state.order } : null,
+      });
+    }
+
+    state.workflow = null;
+    state.currentStep = null;
+    state.awaitingDecision = false;
+  }
+
+  resume(state) {
+    if (!state.workflowStack?.length) {
+      return false;
+    }
+
+    const paused = state.workflowStack.pop();
+
+    state.workflow = paused.workflow;
+    state.currentStep = paused.currentStep;
+    state.awaitingDecision = paused.awaitingDecision;
+    state.routing = paused.routing;
+
+    switch (paused.workflow) {
+      case "RECOMMENDATION":
+        state.recommendationContext = paused.recommendationContext;
+        break;
+
+      case "LEAD":
+        state.leadRequest = paused.leadRequest;
+        break;
+
+      case "ORDER":
+        state.order = paused.order;
+        break;
+    }
+
+    return true;
+  }
+
+  // helpers
+
+  hasPausedWorkflow(state) {
+    return Boolean(state.workflowStack?.length);
+  }
+
+  peekPausedWorkflow(state) {
+    if (!state.workflowStack?.length) {
+      return null;
+    }
+
+    return state.workflowStack[state.workflowStack.length - 1];
+  }
+
+  discardPausedWorkflow(state) {
+    if (!state.workflowStack?.length) {
+      return false;
+    }
+
+    state.workflowStack.pop();
+
+    return true;
+  }
+
+  /*
+   * =====================================================
+   * Continue Current Workflow
+   * =====================================================
+   */
+
+  shouldContinue(state) {
+    if (!this.isActive(state)) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * UI Actions
+     * =====================================================
+     */
+
+    if (state.action?.id) {
+      return true;
+    }
+
+    if (!state.awaitingDecision) {
+      return false;
+    }
+
+    if (this.isCompleted(state)) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Workflow already completed
+     * =====================================================
+     */
+
+    if (this.isCompleted(state)) {
+      return false;
+    }
+
+    const text = (state.userMessage ?? "").trim().toLowerCase();
+
+    if (!text) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Greetings
+     * =====================================================
+     */
+
+    if (GREETING_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * FAQ
+     * =====================================================
+     */
+
+    if (FAQ_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Product Details
+     * =====================================================
+     */
+
+    if (DETAIL_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Comparison
+     * =====================================================
+     */
+
+    if (COMPARISON_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Support
+     * =====================================================
+     */
+
+    if (SUPPORT_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Lead / Quote
+     * =====================================================
+     */
+
+    if (LEAD_PATTERNS.some((pattern) => pattern.test(text))) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Order Intent
+     * =====================================================
+     */
+
+    if (
+      /\b(order|buy|purchase|checkout|quantity|qty|place order)\b/i.test(text)
+    ) {
+      return false;
+    }
+
+    /*
+     * =====================================================
+     * Everything else belongs to the current workflow.
+     * Let RecommendationQuestionEngine / OrderEngine
+     * interpret the answer.
+     * =====================================================
+     */
+
+    return true;
+  }
+  /*
+   * =====================================================
+   * Current Workflow Routing
+   * =====================================================
+   */
+
+  currentRouting(state) {
+    const capability = this.currentCapability(state);
+
+    return {
+      capability,
+      capabilities: [capability],
+      confidence: 1,
+      source: "WORKFLOW",
+    };
   }
 }

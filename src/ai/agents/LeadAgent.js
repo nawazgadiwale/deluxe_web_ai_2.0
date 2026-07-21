@@ -8,10 +8,23 @@ const leadService = new LeadService();
 
 export default class LeadAgent extends BaseAgent {
   async execute(state) {
+    console.log("LEAD EXIT");
+    console.log(state.persistence);
+
     console.log("LeadAgent Executed");
 
     const result = await leadService.process(state);
     state.leadRequest = result.leadRequest;
+
+    if (
+      state.order &&
+      state.leadRequest &&
+      state.leadRequest.type === "ORDER_REQUEST"
+    ) {
+      state.order.leadId = state.leadRequest._id ?? null;
+
+      state.persistence.order.dirty = true;
+    }
 
     state.workflow = "LEAD";
 

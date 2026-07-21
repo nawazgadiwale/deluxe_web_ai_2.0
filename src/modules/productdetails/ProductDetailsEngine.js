@@ -1,34 +1,32 @@
 import LLMService from "../../ai/llm/LLMService.js";
-import RAGPipeline from "../../ai/rag/retrieval/RagPipeline.js";
-import CatalogService from "../catalog/CatalogService.js";
 import ProductDetailsPrompt from "../../ai/llm/prompts/ProductDetailsPrompt.js";
-import CatalogMapper from "../../modules/catalog/CatalogMapper.js";
 import ProductDetailsContextBuilder from "./builders/ProductDetailsContextBuilder.js";
+import ProductResolver from "../catalog/ProductResolver.js";
 
 const llmService = new LLMService();
-const ragPipeline = new RAGPipeline();
-const catalogService = new CatalogService();
-const catalogMapper = new CatalogMapper();
-
+const productResolver = new ProductResolver();
 const contextBuilder = new ProductDetailsContextBuilder();
 
 export default class ProductDetailsEngine {
   async generate(state) {
+    let product = null;
+
     /*
      * =====================================================
      * Resolve Product
      * =====================================================
      */
-    let product = null;
 
     if (state.action?.payload?.product) {
-      product = await catalogService.getProductByAction(
-        state.action.payload.product,
-      );
+      product = await productResolver.resolve(state.action.payload.product);
     }
 
-    if (!product) {
-      product = await catalogMapper.findProduct(productName);
+    if (!product && state.userMessage) {
+      product = await productResolver.resolve(state.userMessage);
+    }
+
+    if (!product && state.routing?.products?.length) {
+      product = await productResolver.resolve(state.routing.products[0]);
     }
 
     if (!product) {
@@ -39,21 +37,7 @@ export default class ProductDetailsEngine {
 
     /*
      * =====================================================
-     * Retrieve Related Documents
-     * =====================================================
-     */
-
-    const retrieval = await ragPipeline.retrieve({
-      query: metadata.product,
-      conversation: state,
-      options: {
-        topK: 10,
-      },
-    });
-
-    /*
-     * =====================================================
-     * Build Catalog Context
+     * Build Context
      * =====================================================
      */
 
@@ -61,19 +45,17 @@ export default class ProductDetailsEngine {
 
     /*
      * =====================================================
-     * LLM
+     * Generate AI Overview
      * =====================================================
      */
 
-    const llm = await llmService.invoke({
+    const overview = await llmService.invoke({
       systemPrompt: ProductDetailsPrompt({
         product: metadata.product,
         catalogContext,
       }),
-
       userMessage: metadata.product,
-
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
     /*
@@ -83,15 +65,11 @@ export default class ProductDetailsEngine {
      */
 
     return {
+      overview,
+
       metadata,
 
       description: product.content ?? product.pageContent ?? "",
-
-      documents: retrieval.documents,
-
-      context: retrieval.context,
-
-      llm,
     };
   }
 }

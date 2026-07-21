@@ -1,21 +1,19 @@
 import ConversationRepository from "../../../repositories/ConversationRepository.js";
 import LeadRequestRepository from "../../../repositories/LeadRepository.js";
 import MemoryService from "../../../modules/memory/MemoryService.js";
+import OrderRepository from "../../../repositories/OrderRequestRepository.js";
 
 const conversationRepository = new ConversationRepository();
 const leadRequestRepository = new LeadRequestRepository();
+const orderRepository = new OrderRepository();
+
 const memoryService = new MemoryService();
 
 export default class SaveSessionNode {
   async execute(state) {
-    console.log("========== SAVE NODE ENTRY ==========");
-    console.log("Dirty:", state.persistence?.conversation?.dirty);
-    console.log("Workflow:", state.workflow);
-    console.log("Step:", state.currentStep);
-    console.log("=====================================");
     /*
      * =====================================================
-     * Synchronize Customer Snapshot
+     * Synchronize Customer
      * =====================================================
      */
 
@@ -32,7 +30,17 @@ export default class SaveSessionNode {
      * =====================================================
      */
 
+    // console.log("BEFORE MERGE");
+    // console.dir(state.recommendationContext, { depth: null });
+
     state.memory = memoryService.merge(state.memory, state);
+
+    // console.log("AFTER MERGE");
+    // console.dir(state.memory.recommendationContext, { depth: null });
+
+    state.recommendation = state.memory.recommendation;
+
+    state.recommendationContext = state.memory.recommendationContext;
 
     /*
      * =====================================================
@@ -55,47 +63,90 @@ export default class SaveSessionNode {
      * Persist Conversation
      * =====================================================
      */
-    console.log("======================================");
-    console.log("SAVE CONVERSATION");
-    console.log("Conversation Dirty:", state.persistence?.conversation?.dirty);
-    console.log("Workflow:", state.workflow);
-    console.log("Current Step:", state.currentStep);
-    console.log("======================================");
-    if (state.persistence?.conversation?.dirty) {
-      await conversationRepository.update(
+
+    // console.log("==== BEFORE SAVE ====");
+    // console.dir(
+    //   {
+    //     dirty: state.persistence?.conversation?.dirty,
+    //     workflow: state.workflow,
+    //     currentStep: state.currentStep,
+    //     recommendationActive: state.recommendationContext?.active,
+    //   },
+    //   { depth: null },
+    // );
+
+    if (true) {
+      const active =
+        state.order &&
+        !["CONFIRMED", "CANCELLED", "DELETED"].includes(state.order.status);
+
+      const workflow = active ? "ORDER" : (state.workflow ?? null);
+      /*
+       * Order workflow is now form-based.
+       * Only Recommendation / Lead persist conversational steps.
+       */
+      const currentStep = state.order?.active
+        ? null
+        : (state.currentStep ?? null);
+      const conversationUpdate = {
+        customer: state.customer,
+
+        workflow,
+
+        currentStep,
+
+        metadata: {
+          ...(state.metadata ?? {}),
+          workflowStack: state.workflowStack ?? [],
+          lastRecommendationAt:
+            state.recommendationContext?.completedAt ?? null,
+        },
+
+        memory: {
+          ...state.memory,
+          recommendation: state.recommendation,
+          recommendationContext: state.recommendationContext,
+        },
+
+        messages: state.history,
+
+        updatedAt: new Date(),
+      };
+
+      state.conversation = await conversationRepository.update(
         {
           sessionId: state.sessionId,
         },
         {
-          customer: state.customer,
-
-          workflow: state.workflow ?? null,
-
-          currentStep: state.currentStep ?? null,
-
-          metadata: state.metadata,
-
-          memory: state.memory,
-
-          messages: state.history,
-
-          updatedAt: new Date(),
+          $set: conversationUpdate,
         },
         {
           upsert: true,
         },
       );
 
+      const db = await conversationRepository.findBySessionId(state.sessionId);
+
+      // console.log("==== DATABASE ====");
+      // console.dir(
+      //   {
+      //     workflow: db.workflow,
+      //     currentStep: db.currentStep,
+      //     recommendationActive: db.memory?.recommendationContext?.active,
+      //   },
+      //   { depth: null },
+      // );
+
+      /*
+       * =====================================================
+       * Synchronize Memory Snapshot
+       * =====================================================
+       */
+
+      state.memory = memoryService.build(state.conversation);
+
       state.persistence.conversation.dirty = false;
     }
-    console.log("Conversation Updated.");
-
-    const verify = await conversationRepository.findBySessionId(
-      state.sessionId,
-    );
-
-    console.log("Mongo Workflow:", verify.workflow);
-    console.log("Mongo Step:", verify.currentStep);
 
     /*
      * =====================================================
@@ -123,8 +174,60 @@ export default class SaveSessionNode {
 
       state.persistence.leadRequest.dirty = false;
     }
-    console.log("Saving workflow:", state.workflow);
-    console.log("Saving step:", state.currentStep);
+
+    /*
+     * =====================================================
+     * Link Order -> Lead
+     * =====================================================
+     */
+
+    const pendingLeadId =
+      state.order &&
+      state.leadRequest?._id &&
+      state.order.leadId !== state.leadRequest._id
+        ? state.leadRequest._id
+        : null;
+
+    /*
+     * =====================================================
+     * Persist Order
+     * =====================================================
+     */
+
+    if (state.persistence?.order?.dirty && state.order) {
+      /*
+       * Order no longer stores conversational workflow state.
+       */
+
+      state.order.updatedAt = new Date();
+
+      state.order = await orderRepository.saveDraft(
+        state.sessionId,
+        state.conversationId,
+        state.order,
+      );
+
+      if (pendingLeadId) {
+        state.order = await orderRepository.update(state.order._id, {
+          leadId: pendingLeadId,
+        });
+      }
+
+      state.orderContext = state.order;
+
+      state.persistence.order.dirty = false;
+    }
+
+    // console.log("========== SAVE ==========");
+    // console.log({
+    //   workflow: state.workflow,
+    //   orderActive: state.order?.active,
+    //   currentStep: state.currentStep,
+    //   awaitingDecision: state.awaitingDecision,
+    //   recommendationActive: state.recommendationContext?.active,
+    //   dirty: state.persistence?.conversation?.dirty,
+    // });
+    // console.log("==========================");
 
     return state;
   }

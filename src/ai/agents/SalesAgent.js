@@ -18,33 +18,42 @@ export default class SalesAgent extends BaseAgent {
      * =====================================================
      */
 
-    const questionResult = await recommendationQuestionService.execute(state);
+    const isConversation =
+      state.recommendationContext?.active &&
+      state.recommendationContext?.completed &&
+      (state.recommendationContext?.catalogProducts?.length ?? 0) > 0 &&
+      !state.awaitingDecision;
 
-    if (!questionResult.ready) {
-      state.response = questionResult.response;
+    if (!isConversation) {
+      const questionResult = await recommendationQuestionService.execute(state);
 
-      state.persistence.conversation = {
-        ...state.persistence.conversation,
-        dirty: true,
-        updatedAt: new Date(),
-      };
+      if (!questionResult.ready) {
+        state.response = questionResult.response;
 
-      return state;
+        state.persistence.conversation = {
+          ...state.persistence.conversation,
+          dirty: true,
+          updatedAt: new Date(),
+        };
+
+        return state;
+      }
     }
 
     /*
      * =====================================================
-     * Generate Recommendation
+     * Recommendation Engine
+     * Engine decides whether this is:
+     * - Fresh recommendation
+     * - Recommendation conversation
      * =====================================================
      */
 
-    const result = await recommendationService.generate(state);
-    console.log("Recommendation Result");
-    console.dir(result, { depth: null });
+    const result = await recommendationService.execute(state);
 
     /*
      * =====================================================
-     * Store Retrieval Context
+     * RAG Context
      * =====================================================
      */
 
@@ -55,63 +64,56 @@ export default class SalesAgent extends BaseAgent {
 
     /*
      * =====================================================
-     * Store Recommendation
+     * Recommendation Conversation
+     * =====================================================
+     */
+
+    if (isConversation) {
+      state.persistence.conversation = {
+        ...state.persistence.conversation,
+        dirty: true,
+        updatedAt: new Date(),
+      };
+
+      state.response = responseBuilder.recommendation(result.recommendation);
+
+      if (state.workflowStack?.length) {
+        responseBuilder.appendResumePrompt(
+          state.response,
+          state.workflowStack.at(-1),
+        );
+      }
+
+      return state;
+    }
+
+    /*
+     * =====================================================
+     * Fresh Recommendation
      * =====================================================
      */
 
     state.recommendation = result.recommendation;
 
-    /*
-     * =====================================================
-     * Update Recommendation Context
-     * =====================================================
-     */
-
-    state.recommendationContext.products = result.recommendation.products ?? [];
-
-    state.recommendationContext.totalProducts =
-      result.recommendation.products?.length ?? 0;
-
-    state.recommendationContext.page = 1;
-    state.recommendationContext.hasMore = false;
-
-    /*
-     * =====================================================
-     * Recommendation Session
-     * =====================================================
-     */
-
     state.recommendationContext = {
       ...(state.recommendationContext ?? {}),
 
       active: true,
+      completed: true,
+      completedAt: new Date(),
 
       products: result.recommendation.products ?? [],
+      catalogProducts: result.catalogProducts ?? [],
 
       totalProducts: result.recommendation.products?.length ?? 0,
 
       page: 1,
-
       hasMore: false,
-
-      completedAt: new Date(),
     };
 
-    /*
-     * =====================================================
-     * Workflow Ends
-     * =====================================================
-     */
-
-    state.workflow = null;
-    state.currentStep = null;
+    state.workflow = "RECOMMENDATION";
+    state.currentStep = "RECOMMENDATION_RESULTS";
     state.awaitingDecision = false;
-
-    /*
-     * =====================================================
-     * Persistence
-     * =====================================================
-     */
 
     state.persistence.conversation = {
       ...state.persistence.conversation,
@@ -119,13 +121,14 @@ export default class SalesAgent extends BaseAgent {
       updatedAt: new Date(),
     };
 
-    /*
-     * =====================================================
-     * Response
-     * =====================================================
-     */
-
     state.response = responseBuilder.recommendation(result.recommendation);
+
+    if (state.workflowStack?.length) {
+      responseBuilder.appendResumePrompt(
+        state.response,
+        state.workflowStack.at(-1),
+      );
+    }
 
     return state;
   }

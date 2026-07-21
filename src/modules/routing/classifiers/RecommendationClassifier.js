@@ -1,20 +1,44 @@
+import LLMService from "../../../ai/llm/LLMService.js";
+import RecommendationRoutingPrompt from "../../../ai/llm/prompts/RecommendationRoutingPrompt.js";
+
 import {
-  RECOMMENDATION_KEYWORDS,
-  BUSINESS_TYPES,
-  BUSINESS_GOALS,
-  OCCASIONS,
-  PLANNING_PATTERNS,
+  RECOMMENDATION_PATTERNS,
+  ALL_INTERRUPT_PATTERNS,
 } from "../utils/RoutingConstants.js";
 
+const llm = new LLMService();
+
 export default class RecommendationClassifier {
-  classify(state) {
-    const message = (state.userMessage ?? "").trim().toLowerCase();
+  async classify(state) {
+    /*
+     * Active workflow
+     */
+
+    if (state.workflow) {
+      return null;
+    }
+
+    /*
+     * Already inside recommendation
+     */
+
+    if (state.recommendationContext?.active) {
+      return null;
+    }
+
+    const message = (state.userMessage ?? "").trim();
 
     if (!message) {
       return null;
     }
 
-    if (PLANNING_PATTERNS.some((pattern) => pattern.test(message))) {
+    const normalized = message.toLowerCase();
+
+    /*
+     * Rule Based
+     */
+
+    if (RECOMMENDATION_PATTERNS.some((pattern) => pattern.test(normalized))) {
       return {
         capability: "recommendation",
         confidence: 1,
@@ -23,55 +47,41 @@ export default class RecommendationClassifier {
     }
 
     /*
-     * ==========================================
-     * Planning Intent
-     * ==========================================
+     * Don't steal other intents
      */
 
-    if (RECOMMENDATION_KEYWORDS.some((k) => message.includes(k))) {
-      return {
-        capability: "recommendation",
-        confidence: 1,
-        source: "RULE",
-      };
+    if (ALL_INTERRUPT_PATTERNS.some((pattern) => pattern.test(normalized))) {
+      return null;
     }
 
     /*
-     * ==========================================
-     * Business Recommendation
-     * ==========================================
+     * Tiny LLM
      */
 
-    const mentionsBusiness = BUSINESS_TYPES.some((type) =>
-      message.includes(type),
-    );
+    const schema = {
+      type: "object",
+      properties: {
+        recommendation: {
+          type: "boolean",
+        },
+      },
+      required: ["recommendation"],
+    };
 
-    const mentionsGoal = BUSINESS_GOALS.some((goal) => message.includes(goal));
+    const result = await llm.invokeStructured({
+      schema,
+      systemPrompt: RecommendationRoutingPrompt(),
+      userMessage: message,
+    });
 
-    if (mentionsBusiness && mentionsGoal) {
-      return {
-        capability: "recommendation",
-        confidence: 1,
-        source: "RULE",
-      };
+    if (!result.recommendation) {
+      return null;
     }
 
-    /*
-     * ==========================================
-     * Event Recommendation
-     * ==========================================
-     */
-
-    const mentionsOccasion = OCCASIONS.some((event) => message.includes(event));
-
-    if (mentionsOccasion) {
-      return {
-        capability: "recommendation",
-        confidence: 1,
-        source: "RULE",
-      };
-    }
-
-    return null;
+    return {
+      capability: "recommendation",
+      confidence: 0.8,
+      source: "LLM",
+    };
   }
 }

@@ -17,65 +17,100 @@ export default class LeadExtractor {
 
       case "ASK_NAME":
       case "name": {
+        // Never invoke the LLM on empty input
+        if (!message) {
+          return {
+            name: null,
+          };
+        }
+
+        // Reject obvious non-name inputs
+        if (/^\d+$/.test(message)) {
+          return {
+            name: null,
+          };
+        }
+
+        if (message.includes("@")) {
+          return {
+            name: null,
+          };
+        }
+
+        // Direct replies like:
+        // Nawaz
+        // John Smith
+        if (/^[A-Za-z\s.'-]{2,60}$/.test(message)) {
+          return {
+            name: message.trim(),
+          };
+        }
+
+        // Only use the LLM when really necessary
         const schema = {
           type: "object",
-
           properties: {
             name: {
               type: "string",
             },
           },
-
           required: ["name"],
         };
 
         const systemPrompt = `
 You are an information extraction engine.
 
-Your ONLY task is extracting the PERSON'S NAME.
+Extract ONLY the person's name.
 
-Rules
+Rules:
 
-- Extract only the person's name.
+- If no person's name exists, return:
+{
+  "name":""
+}
+
+- Never guess.
+- Never infer.
+- Never copy examples.
+- Never invent a name.
 - Ignore phone numbers.
 - Ignore email addresses.
 - Ignore company names.
 - Ignore products.
-- Ignore everything else.
-- Never guess.
-- Never infer.
 - Return JSON only.
 
 Examples
 
-"Nawaz"
+Input:
+"My name is Alice"
 
+Output:
 {
-"name":"Nawaz"
+  "name":"Alice"
 }
 
-"My name is Nawaz"
-
-{
-"name":"Nawaz"
-}
-
+Input:
 "I am John Smith"
 
+Output:
 {
-"name":"John Smith"
+  "name":"John Smith"
 }
 
+Input:
 "8310412768"
 
+Output:
 {
-"name":""
+  "name":""
 }
 
-"john@gmail.com"
+Input:
+""
 
+Output:
 {
-"name":""
+  "name":""
 }
 `;
 
@@ -86,7 +121,7 @@ Examples
         });
 
         return {
-          name: extracted.name?.trim() || null,
+          name: extracted?.name?.trim() || null,
         };
       }
 
@@ -96,12 +131,12 @@ Examples
        * -------------------------------------------------------
        */
 
-      case "ASK_MOBILE":
-      case "mobile": {
+      case "ASK_PHONE":
+      case "phone": {
         const match = message.match(/(\+?\d[\d\s()-]{6,19})/);
 
         return {
-          mobile: match ? match[1].trim() : null,
+          phone: match ? match[1].trim() : null,
         };
       }
 
@@ -128,40 +163,34 @@ Examples
 
       case "ASK_COMPANY":
       case "company": {
+        if (!message) {
+          return {
+            company: null,
+          };
+        }
+
         const schema = {
           type: "object",
-
           properties: {
             company: {
               type: "string",
             },
           },
-
           required: ["company"],
         };
 
         const systemPrompt = `
 Extract ONLY the company name.
 
-Never guess.
-
-Never infer.
-
-Ignore names.
-
-Ignore phone numbers.
-
-Ignore emails.
-
-Return JSON only.
-
-Example
-
-"I work at Microsoft"
+If no company is mentioned return:
 
 {
-"company":"Microsoft"
+  "company":""
 }
+
+Never guess.
+Never infer.
+Return JSON only.
 `;
 
         const extracted = await llmService.invokeStructured({
@@ -171,15 +200,9 @@ Example
         });
 
         return {
-          company: extracted.company?.trim() || null,
+          company: extracted?.company?.trim() || null,
         };
       }
-
-      /*
-       * -------------------------------------------------------
-       * Default
-       * -------------------------------------------------------
-       */
 
       default:
         return {};

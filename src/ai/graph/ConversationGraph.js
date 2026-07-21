@@ -16,7 +16,9 @@ import GreetingNode from "./nodes/GreetingNode.js";
 
 import ProductDetailsNode from "./nodes/ProductDetailsNode.js";
 import ComparisonNode from "./nodes/ComparisonNode.js";
-import DiscoveryNode from "./nodes/DiscoveryNode.js"
+import DiscoveryNode from "./nodes/DiscoveryNode.js";
+import OutOfScopeNode from "./nodes/OutOfScopeNode.js";
+import OrderNode from "./nodes/OrderNode.js";
 
 const loadSessionNode = new LoadSessionNode();
 const routingNode = new RoutingNode();
@@ -29,10 +31,12 @@ const conversationRouter = new ConversationRouter();
 const leadNode = new LeadNode();
 const greetingNode = new GreetingNode();
 const productDetailsNode = new ProductDetailsNode();
+const orderNode = new OrderNode();
 
 const comparisonNode = new ComparisonNode();
 
 const discoveryNode = new DiscoveryNode();
+const outofscopeNode = new OutOfScopeNode();
 
 export default function createConversationGraph() {
   const builder = new GraphBuilder(ConversationState);
@@ -70,7 +74,11 @@ export default function createConversationGraph() {
 
     .addNode("ComparisonNode", comparisonNode.execute.bind(comparisonNode))
 
-    .addNode("DiscoveryNode", discoveryNode.execute.bind(discoveryNode));
+    .addNode("DiscoveryNode", discoveryNode.execute.bind(discoveryNode))
+
+    .addNode("OrderNode", orderNode.execute.bind(orderNode))
+
+    .addNode("OutOfScopeNode", outofscopeNode.execute.bind(outofscopeNode));
 
   // -------------------------
   // Static Edges
@@ -103,6 +111,9 @@ export default function createConversationGraph() {
     "LeadNode",
     "FAQNode",
     "GreetingNode",
+    "DiscoveryNode",
+    "OrderNode",
+    "OutOfScopeNode",
   ];
 
   capabilityNodes.forEach((node) => {

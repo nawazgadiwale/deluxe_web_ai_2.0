@@ -29,7 +29,7 @@ export default class DiscoveryValidator {
         actions: [
           {
             id: "SHOW_PRODUCT_DETAILS",
-            label: "Show More",
+            label: "View details",
             payload: {
               product: item.product,
             },
